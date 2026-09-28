@@ -268,7 +268,7 @@ The development environment is currently designed for Linux/WSL2.
    ```
 
 
-### Conda Environments
+## Conda Environments
 
 Do not install DSRL dependencies into por-env, and do not install the older POR/D4RL stack into safe-data-env.
 
