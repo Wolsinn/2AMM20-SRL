@@ -1,0 +1,46 @@
+# Python\
+__pycache__/
+*.py[cod]
+*.so
+
+# Virtual environments
+.venv/
+venv/
+
+# Conda
+.conda/
+
+# Data
+data/raw/*
+data/verified/*
+data/processed/*
+
+# Keep directory structure
+!data/raw/.gitkeep
+!data/verified/.gitkeep
+!data/processed/.gitkeep
+
+# Experiments
+experiments/runs/*
+experiments/results/*
+
+# External repositories
+external/
+
+# Model checkpoints
+*.pt
+*.pth
+*.ckpt
+
+# Logs
+*.log
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/

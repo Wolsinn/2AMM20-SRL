@@ -1,0 +1,15 @@
+=== SYSTEM ===
+Linux OmerArslan-HP 6.6.87.2-microsoft-standard-WSL2 #1 SMP PREEMPT_DYNAMIC Thu Jun  5 18:30:46 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+=== PYTHON ===
+Python 3.10.21
+
+=== CONDA ===
+conda 26.7.1
+
+=== PYTORCH ===
+2.14.0+cu130
+CUDA: False
+
+=== GIT ===
+git version 2.34.1
