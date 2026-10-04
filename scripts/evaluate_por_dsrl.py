@@ -233,5 +233,5 @@ def evaluate(num_episodes=5):
 
 if __name__ == "__main__":
     evaluate(
-        num_episodes=5
+        num_episodes=30
     )

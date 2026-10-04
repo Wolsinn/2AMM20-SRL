@@ -92,7 +92,7 @@ pip install -e .
 pip install -r environments/por-lock.txt
 ```
 
-### 7. Run a small POR smoke test
+### 7. (Optional) Run a small POR smoke test
 ```
 cd ~/projects/2AMM20-SRL/external/POR
 
@@ -104,8 +104,7 @@ WANDB_MODE=offline python main_por.py \
    --n_eval_episodes 1
 ```
 
-**NOTE:** This is only a smoke test. A successful run should finish training and create model files under:
-   - `models/hopper-medium-v2/`
+**NOTE:** This is only a smoke test. A successful run should finish training and create model files under `models/hopper-medium-v2/`
 
 
 ### 8. Create the DSRL environment
@@ -194,10 +193,10 @@ The current dataset is:
 - `conda activate por-env`
 - `python scripts/train_por_dsrl.py`
 
-The current script is configured as a small smoke test using:
+The current script is configured as a small test using:
 
-- 100,000 transitions
-- 1,000 POR training steps
+- 2,022,000 transitions
+- 10,000 POR training steps
 - CPU execution
 
 The output is saved to:
@@ -241,17 +240,4 @@ At the end it reports the mean reward, mean cost, violation rate, and mean episo
 
 - Do not commit generated experiment artifacts. The `/data` and `/experiments` are intended for local/generated data.
 - The repositories under `external/` are third-party dependencies. Do not modify the original POR, DSRL, or MJRL implementation.
-- When modifications are necessary, implement project-specific functionality under `src/` and document any modifications to external code.
-
-
-## Current Status
-
-The project currently has a functional end-to-end smoke-test pipeline. The initial experiments use the DSRL `SafetyPointGoal1` dataset: `SafetyPointGoal1Gymnasium-v0-100-2022.hdf5`
-
-1. DSRL SafetyPointGoal1 offline dataset can be loaded.
-2. The original POR implementation can be trained on the DSRL transitions.
-3. POR policy and guide-policy networks can be saved and loaded.
-4. The trained policy can be evaluated in Safety-Gymnasium.
-5. Episode reward and safety cost can be measured.
-
-The current smoke test uses 100,000 of the 2,022,000 available transitions and 1,000 POR training steps. It is intended only to verify the technical pipeline.
+- When modifications are necessary, implement project-specific functionality under `src/`.

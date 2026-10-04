@@ -36,14 +36,14 @@ RUN_DIR = (
 DEVICE = torch.device("cpu")
 
 
-def load_dataset(max_transitions=100_000):
+def load_dataset(max_transitions=None):
     import h5py
 
     dataset = {}
 
     with h5py.File(DATASET_PATH, "r") as file:
         total = len(file["observations"])
-        n = min(max_transitions, total)
+        n = total if max_transitions is None else min(max_transitions, total)
 
         dataset["observations"] = np.asarray(
             file["observations"][:n], dtype=np.float32
@@ -131,12 +131,12 @@ def build_por(obs_dim, act_dim, train_steps):
 
 
 def main():
-    train_steps = 1000
+    train_steps = 10000
     batch_size = 256
 
     print("Loading DSRL dataset...")
 
-    dataset = load_dataset(max_transitions=100_000)
+    dataset = load_dataset(max_transitions=None)
 
     print(
         f"Loaded {len(dataset['observations'])} transitions."
