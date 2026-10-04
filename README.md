@@ -2,11 +2,9 @@
 
 Research project on Safe Offline RL. This repository contains the code, experiments, configurations, and analysis for investigating safety-aware state compositionality in offline RL.
 
-The project uses Policy-Guided Imitation (POR) as the main offline RL framework and Datasets and Benchmarks for Offline Safe RL (DSRL) as the primary source of safe offline RL datasets.
+The project uses Policy-Guided Imitation (POR) as the main offline RL framework and datasets for Offline Safe RL (DSRL) as the primary source of safe offline RL datasets.
 
 ## Prerequisites
-
-The development environment is currently designed for Linux/WSL2.
 
 - Windows 10/11
 - WSL2
@@ -33,233 +31,113 @@ The development environment is currently designed for Linux/WSL2.
 - Start Ubuntu 22.04 and complete the initial Linux user setup.
 
 - Verify the installation:
-   - `uname -a`
    - `cat /etc/os-release`
    - Should return `PRETTY_NAME="Ubuntu 22.04.5 LTS"...`
 
-### 2. Install required Linux packages
+### 2. Install Linux development tools
 
-- Update the package lists:
-   - `sudo apt update`
-   - `sudo apt upgrade -y`
+```
+sudo apt update
+sudo apt upgrade -y
+```
 
-- Install the required development tools:
-    ```
-    sudo apt install -y \
-        git \
-        curl \
-        wget \
-        build-essential \
-        unzip \
-        zip \
-        pkg-config \
-        software-properties-common \
-        ca-certificates
-    ```
-
-- Verify Git and the compiler:
-    ```
-    git --version
-    gcc --version
-    g++ --version
-    ```
+```
+sudo apt install -y \
+   git \
+   curl \
+   wget \
+   build-essential \
+   unzip \
+   zip \
+   pkg-config \
+   software-properties-common \
+   ca-certificates
+```
 
 ### 3. Install Miniconda
 
 - Install Miniconda inside WSL (don't use a Windows Conda installation).
-
 - After installation, restart the shell or reload the shell configuration.
-
 - `conda --version` should return `conda 26.7.1`
 
 ### 4. Clone the project
 
-- Clone this repository into the WSL Linux filesystem.
-
-    ```
-    mkdir -p ~/projects
-    cd ~/projects`
-    git clone https://github.com/Wolsinn/2AMM20-SRL.git
-    cd 2AMM20-SRL
-    ```
+```
+mkdir -p ~/projects
+cd ~/projects
+git clone https://github.com/Wolsinn/2AMM20-SRL.git
+cd 2AMM20-SRL
+```
 
 ### 5. Create the POR environment
 
-- Create the dedicated environment for the original POR implementation:
-   - `conda create -n por-env python=3.10 -y`
+```
+conda create -n por-env python=3.10 -y
+conda activate por-env
+cd ~/projects/2AMM20-SRL/external
+git clone https://github.com/ryanxhr/POR.git
+cd POR
+git checkout e692bb3a0c92b2dc668d71b0a5fc6e04a53344e1
+```
 
-- Activate it:
-   - `conda activate por-env`
-
-- `python --version` should return `Python 3.10.x`
-
-### 6. Clone POR
-
-- Clone the POR repository:
-   ```
-   cd ~/projects/2AMM20-SRL/external
-   git clone https://github.com/ryanxhr/POR.git
-   cd POR
-   git checkout e692bb3a0c92b2dc668d71b0a5fc6e04a53344e1
-   ```
-
-- Verify:
-    - `git rev-parse HEAD`
-    - Should return `e692bb3a0c92b2dc668d71b0a5fc6e04a53344e1`
-
-### 7. Install POR dependencies
-
-- The POR repository contains its own requirements.txt.
-
-- Because POR depends on older offline RL tooling, its dependencies should be installed in the dedicated por-env environment rather than the DSRL environment.
-
-- Use the lock file included in:
-   - `environments/por-lock.txt`
-
-- You can inspect the installed environment with:
-   - `pip freeze`
-
-### 8. Install MJRL
+### 6. Install MJRL
 
 - POR requires MJRL. Clone the tested MJRL repository:
-   ```
-   cd ~/projects/2AMM20-SRL/external
-   git clone https://github.com/aravindr93/mjrl.git
-   cd mjrl
-   git checkout 3871d93763d3b49c4741e6daeaebbc605fe140dc
-   ```
+```
+cd ~/projects/2AMM20-SRL/external
+git clone https://github.com/aravindr93/mjrl.git
+cd mjrl
+git checkout 3871d93763d3b49c4741e6daeaebbc605fe140dc
+pip install -e .
+pip install -r environments/por-lock.txt
+```
 
-- Install it in editable mode:
-   - `pip install -e .`
+### 7. Run a small POR smoke test
+```
+cd ~/projects/2AMM20-SRL/external/POR
 
-- Verify `python -c "import mjrl; print('mjrl OK')"`
+WANDB_MODE=offline python main_por.py \
+   --env_name hopper-medium-v2 \
+   --pretrain_steps 100 \
+   --train_steps 1000 \
+   --eval_period 500 \
+   --n_eval_episodes 1
+```
 
-### 9. Verify D4RL and Hopper
-
-- Activate the POR environment:
-   - `conda activate por-env`
-
-- Run:
-    ```
-    python - <<'PY'
-    import gym
-    import d4rl
-
-    print("Checking Hopper registration...")
-
-    env = gym.make("hopper-medium-v2")
-
-    print("Environment:", env)
-    print("Observation space:", env.observation_space)
-    print("Action space:", env.action_space)
-
-    dataset = d4rl.qlearning_dataset(env)
-
-    print("Dataset loaded!")
-    print("observations:", dataset["observations"].shape)
-    print("next_observations:", dataset["next_observations"].shape)
-    print("actions:", dataset["actions"].shape)
-    print("rewards:", dataset["rewards"].shape)
-    print("terminals:", dataset["terminals"].shape)
-    PY
-    ```
-
-- A successful setup should report approximately:
-
-    ```
-    observations: (999998, 11)
-    next_observations: (999998, 11)
-    actions: (999998, 3)
-    rewards: (999998,)
-    terminals: (999998,)
-    ```
-
-- The D4RL dataset will be downloaded automatically if it is not already present.
-
-### 10. Run a small POR smoke test
-
-- Before running a full experiment, run a short training job:
-
-    ```
-    cd ~/projects/2AMM20-SRL/external/POR
-
-    WANDB_MODE=offline python main_por.py \
-        --env_name hopper-medium-v2 \
-        --pretrain_steps 100 \
-        --train_steps 1000 \
-        --eval_period 500 \
-        --n_eval_episodes 1
-    ```
-
-- This is only a smoke test and is not intended to reproduce the reported POR results. A successful run should finish training and create model files under:
+**NOTE:** This is only a smoke test. A successful run should finish training and create model files under:
    - `models/hopper-medium-v2/`
 
 
-### 11. Create the DSRL environment
+### 8. Create the DSRL environment
 
-- Create the environment:
-   - `conda create -n safe-data-env python=3.10 -y`
+```
+conda create -n safe-data-env python=3.10 -y
+conda activate safe-data-env
+pip install -r environments/dsrl-lock.txt
+cd ~/projects/2AMM20-SRL/external
+git clone https://github.com/liuzuxin/DSRL.git
+cd DSRL
+git checkout 71064f21976f59c8f7139d00f1294963a1558369
+pip install -e .
+```
 
-- Activate it:
-   - `conda activate safe-data-env`
+### 9. Configure the DSRL dataset directory
 
-- Verify: `python --version`
-
-
-### 12. Clone DSRL
-
-- Clone the DSRL repository:
-
-    ```
-    cd ~/projects/2AMM20-SRL/external
-    git clone https://github.com/liuzuxin/DSRL.git
-    cd DSRL
-    git checkout 71064f21976f59c8f7139d00f1294963a1558369
-    ```
-
-- Verify:
-   - `git rev-parse HEAD`
-
-13. Install DSRL
-
-- Install DSRL in editable mode:
-
-   - `pip install -e .`
-
-- Install the project's analysis and testing dependencies:
-
-    ```
-    pip install \
-        h5py \
-        pandas \
-        scipy \
-        matplotlib \
-        seaborn \
-        scikit-learn \
-        tqdm \
-        pyyaml \
-        pytest
-    ```
-
-### 14. Configure the DSRL dataset directory
-
-- Run
-   ```
-   cd ~/projects/2AMM20-SRL`
-   export SAFE_POR_ROOT="$HOME/projects/2AMM20-SRL"
-   export DSRL_DATASET_DIR="$SAFE_POR_ROOT/data/raw/dsrl"
-   ```
+```
+cd ~/projects/2AMM20-SRL`
+export SAFE_POR_ROOT="$HOME/projects/2AMM20-SRL"
+export DSRL_DATASET_DIR="$SAFE_POR_ROOT/data/raw/dsrl"
+```
 
 - Open `~/.bashrc` add the lines below to the end of the document:
    - `export SAFE_POR_ROOT="$HOME/projects/2AMM20-SRL"`
    - `export DSRL_DATASET_DIR="$SAFE_POR_ROOT/data/raw/dsrl"`
 
-- Run
-   ```
-   source ~/.bashrc
-   echo $SAFE_POR_ROOT
-   echo $DSRL_DATASET_DIR
-   ```
+```
+source ~/.bashrc
+echo $SAFE_POR_ROOT
+echo $DSRL_DATASET_DIR
+```
 
 - It should print
    ```
@@ -267,67 +145,126 @@ The development environment is currently designed for Linux/WSL2.
    /home/<user>/projects/2AMM20-SRL/data/raw/dsrl
    ```
 
-
 ## Conda Environments
 
-Do not install DSRL dependencies into por-env, and do not install the older POR/D4RL stack into safe-data-env.
-
-This separation is intentional because the two projects use different dependency stacks.
-
-To list all available environments:
-
-- `conda info --envs`
+The project uses two separate Conda environments because POR/D4RL and DSRL/Safety-Gymnasium use different dependency stacks.
 
 ### 1. POR environment
-- Used for the original POR/D4RL implementation
+Used for
+- Original POR implementation
+- D4RL
+- POR training on offline datasets
+
+`conda activate por-env`
+
+### 2. SafeRL environment
+Used for
+- DSRL
+- Safety-Gymnasium
+- Dataset inspection and analysis
+- Safety evaluation
+
+`conda activate safe-data-env`
+
+
+## Experimental Pipeline
+
+**1. Verify the Safety-Gymnasium environment**
+
+```
+conda activate safe-data-env
+python scripts/test_safety_env.py
+```
+
+This checks that SafetyPointGoal1-v0 can be created and stepped through successfully.
+
+**2. Download and inspect the DSRL dataset**
+
+`python scripts/download_dsrl_dataset.py`
+
+**3. Inspect the dataset statistics**
+
+`python src/data/inspect_dsrl.py`
+
+The current dataset is:
+- `data/raw/dsrl/SafetyPointGoal1Gymnasium-v0-100-2022.hdf5`
+
+**4. Train POR on the DSRL dataset**
+
 - `conda activate por-env`
+- `python scripts/train_por_dsrl.py`
 
-### 2. DSRL / SafeRL dataset environment
-- Used for DSRL, Safety-Gymnasium and dataset analysis
-- `conda activate safe-data-env`
+The current script is configured as a small smoke test using:
 
-## Running Tests
+- 100,000 transitions
+- 1,000 POR training steps
+- CPU execution
 
-- From the project root:
+The output is saved to:
 
-    ```
-    conda activate safe-data-env
-    pytest
-    ```
+```
+experiments/runs/por_dsrl_pointgoal/policy_network.pt
+experiments/runs/por_dsrl_pointgoal/goal_network.pt
+experiments/runs/por_dsrl_pointgoal/normalization.npz
+```
 
-## Environment Reproducibility
+**5. Evaluate the trained POR policy**
 
-- Environment information is recorded under `environments/`
+The evaluation uses the Safety-Gymnasium environment:
 
-- The current records include:
-    ```
-    por-lock.txt
-    por-commit.txt
-    dsrl-lock.txt
-    dsrl-commit.txt
-    reports/
-    ```
+```
+conda activate safe-data-env
+python scripts/evaluate_por_dsrl.py
+```
 
-- The lock files contain the currently installed Python packages. To generate an updated package list:
+The script loads the policy and guide-policy networks from `experiments/runs/por_dsrl_pointgoal/` and evaluates them in `SafetyPointGoal1-v0`
 
-   - `pip freeze > environments/por-lock.txt`
-   - or:
-   - `pip freeze > environments/dsrl-lock.txt`
+For each episode, it reports:
 
-   depending on the active environment.
+- episode reward
+- episode safety cost
+- episode length
+
+At the end it reports the mean reward, mean cost, violation rate, and mean episode length.
+
+**6. Analyze the dataset manually**
+
+For exploratory analysis, the DSRL HDF5 file can be inspected directly with Python:
+
+`conda activate safe-data-env`
+
+For example, the episode boundaries can be checked using:
+
+terminals = np.asarray(f["terminals"])
+timeouts = np.asarray(f["timeouts"])
+
+The current dataset contains 2,022 episodes of 1,000 transitions each. All episode boundaries are represented by timeouts rather than terminal transitions.
+
+## Dependency Snapshots
+
+- Dependencies are recorded under `environments/`. The lock files contain the currently installed Python packages. If you change the dependencies, generate the updated version of package list and commit it to the repository:
+
+   - If you are in `(safe-data-env)` environment
+      - `pip freeze > environments/dsrl-lock.txt`
+   - If you are in `(por-env)` environment
+      - `pip freeze > environments/por-lock.txt`
+
 
 ## Development Guidelines
 
-Do not commit generated experiment artifacts. Raw datasets should not be committed to Git. The following directories are intended for local/generated data:
+- Do not commit generated experiment artifacts. The `/data` and `/experiments` are intended for local/generated data.
+- The repositories under `external/` are third-party dependencies. Do not modify the original POR, DSRL, or MJRL implementation.
+- When modifications are necessary, implement project-specific functionality under `src/` and document any modifications to external code.
 
-```
-data/raw/
-data/verified/
-data/processed/
-experiments/runs/
-experiments/results/
-```
 
-Dataset files should instead be downloaded using the project's data preparation scripts.
+## Current Status
 
-The repositories under `external/` are third-party dependencies. Do not modify the original POR, DSRL, or MJRL implementation unless the experiment specifically requires it. When modifications are necessary, implement project-specific functionality under `src/` and document any modifications to external code.
+The project currently has a functional end-to-end smoke-test pipeline. The initial experiments use the DSRL `SafetyPointGoal1` dataset: `SafetyPointGoal1Gymnasium-v0-100-2022.hdf5`
+
+1. DSRL SafetyPointGoal1 offline dataset can be loaded.
+2. The original POR implementation can be trained on the DSRL transitions.
+3. POR policy and guide-policy networks can be saved and loaded.
+4. The trained policy can be evaluated in Safety-Gymnasium.
+5. Episode reward and safety cost can be measured.
+
+The current smoke test uses 100,000 of the 2,022,000 available transitions and 1,000 POR training steps. It is intended only to verify the technical pipeline.
