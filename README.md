@@ -114,7 +114,6 @@ WANDB_MODE=offline python main_por.py \
 conda create -n safe-data-env python=3.10 -y
 conda activate safe-data-env
 pip install -r environments/dsrl-lock.txt
-pip install -e external/DSRL
 cd ~/projects/2AMM20-SRL/external
 git clone https://github.com/liuzuxin/DSRL.git
 cd DSRL
