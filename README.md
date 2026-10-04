@@ -228,19 +228,6 @@ For each episode, it reports:
 
 At the end it reports the mean reward, mean cost, violation rate, and mean episode length.
 
-**6. Analyze the dataset manually**
-
-For exploratory analysis, the DSRL HDF5 file can be inspected directly with Python:
-
-`conda activate safe-data-env`
-
-For example, the episode boundaries can be checked using:
-
-terminals = np.asarray(f["terminals"])
-timeouts = np.asarray(f["timeouts"])
-
-The current dataset contains 2,022 episodes of 1,000 transitions each. All episode boundaries are represented by timeouts rather than terminal transitions.
-
 ## Dependency Snapshots
 
 - Dependencies are recorded under `environments/`. The lock files contain the currently installed Python packages. If you change the dependencies, generate the updated version of package list and commit it to the repository:
