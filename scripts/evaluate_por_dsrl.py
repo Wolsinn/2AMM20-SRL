@@ -3,7 +3,7 @@ from pathlib import Path
 
 import numpy as np
 import torch
-import gymnasium as gym
+import safety_gymnasium
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -108,18 +108,22 @@ def select_action(
     ).unsqueeze(0)
 
     with torch.no_grad():
-        goal = goal_policy(
-            observation_tensor
+        goal = goal_policy.act(
+            observation_tensor,
+            deterministic=True,
         )
 
-        action = policy(
-            torch.cat(
-                [
-                    observation_tensor,
-                    goal,
-                ],
-                dim=-1,
-            )
+        policy_input = torch.cat(
+            [
+                observation_tensor,
+                goal,
+            ],
+            dim=-1,
+        )
+
+        action = policy.act(
+            policy_input,
+            deterministic=True,
         )
 
     action = action.squeeze(0).cpu().numpy()
@@ -128,7 +132,7 @@ def select_action(
 
 
 def evaluate(num_episodes=5):
-    env = gym.make(ENV_NAME)
+    env = safety_gymnasium.make(ENV_NAME)
 
     observation_space = env.observation_space
     action_space = env.action_space
@@ -154,7 +158,7 @@ def evaluate(num_episodes=5):
     episode_violations = []
 
     for episode in range(num_episodes):
-        observation, info = env.reset()
+        observation, info = env.reset(seed=episode)
 
         total_reward = 0.0
         total_cost = 0.0
@@ -175,18 +179,12 @@ def evaluate(num_episodes=5):
                 action_space.high,
             )
 
-            observation, reward, terminated, truncated, info = env.step(
+            observation, reward, cost, terminated, truncated, info = env.step(
                 action
             )
 
             total_reward += float(reward)
-
-            cost = float(
-                info.get("cost", 0.0)
-            )
-
-            total_cost += cost
-
+            total_cost += float(cost)
             steps += 1
 
             if terminated or truncated:
