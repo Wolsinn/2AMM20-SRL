@@ -1,4 +1,5 @@
 import sys
+import argparse
 from pathlib import Path
 
 import numpy as np
@@ -10,8 +11,11 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POR_DIR = PROJECT_ROOT / "external" / "POR"
 
 sys.path.insert(0, str(POR_DIR))
+sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from policy import GaussianPolicy
+from safety.cost_model import CostPredictor
+from safety.safe_action import SafeActionCorrector
 
 
 RUN_DIR = (
@@ -26,6 +30,26 @@ DEVICE = torch.device("cpu")
 
 
 ENV_NAME = "SafetyPointGoal1-v0"
+
+
+def load_cost_model():
+    checkpoint = torch.load(
+        RUN_DIR / "cost_predictor.pt",
+        map_location="cpu",
+    )
+
+    model = CostPredictor(
+        checkpoint["state_dim"],
+        checkpoint["action_dim"],
+    )
+
+    model.load_state_dict(
+        checkpoint["model"]
+    )
+
+    model.eval()
+
+    return model
 
 
 def build_policies(obs_dim, act_dim):
@@ -84,9 +108,7 @@ def load_normalization():
 
 
 def normalize_observation(observation, mean, std):
-    return (
-        observation - mean
-    ) / std
+    return (observation - mean) / std
 
 
 def select_action(
@@ -95,15 +117,16 @@ def select_action(
     observation,
     mean,
     std,
+    corrector=None,
 ):
-    observation = normalize_observation(
+    normalized_observation = normalize_observation(
         observation,
         mean,
         std,
     )
 
     observation_tensor = torch.tensor(
-        observation,
+        normalized_observation,
         dtype=torch.float32,
     ).unsqueeze(0)
 
@@ -121,17 +144,36 @@ def select_action(
             dim=-1,
         )
 
-        action = policy.act(
+        proposed_action = policy.act(
             policy_input,
             deterministic=True,
         )
 
-    action = action.squeeze(0).cpu().numpy()
+    proposed_action = (
+        proposed_action
+        .squeeze(0)
+        .cpu()
+        .numpy()
+    )
 
-    return action
+    if corrector is None:
+        return proposed_action, None
+
+    result = corrector.correct(
+        observation=normalized_observation,
+        proposed_action=proposed_action,
+    )
+
+    return result["action"], result
 
 
-def evaluate(num_episodes=5):
+def evaluate(
+    num_episodes=5,
+    mode="por",
+    risk_threshold=1.0,
+    num_candidates=50,
+    candidate_std=0.10
+):
     env = safety_gymnasium.make(ENV_NAME)
 
     observation_space = env.observation_space
@@ -152,10 +194,46 @@ def evaluate(num_episodes=5):
         act_dim,
     )
 
+    corrector = None
+
+    if mode == "safe":
+        cost_model = load_cost_model()
+
+        corrector = SafeActionCorrector(
+            cost_model=cost_model,
+            action_low=action_space.low,
+            action_high=action_space.high,
+            risk_threshold=risk_threshold,
+            num_candidates=num_candidates,
+            candidate_std=candidate_std,
+            device=DEVICE,
+        )
+
+        print()
+        print("Safety correction enabled")
+        print(
+            f"Risk threshold: {risk_threshold}"
+        )
+        print(
+            f"Candidate actions: {num_candidates}"
+        )
+        print(
+            f"Candidate std: {candidate_std}"
+        )
+
     episode_rewards = []
     episode_costs = []
     episode_lengths = []
     episode_violations = []
+    
+    total_corrected = 0
+    total_safe_candidate_found = 0
+    correction_distances = []
+    proposed_risks = []
+    selected_risks = []
+
+    total_unsafe_steps = 0
+    total_steps = 0
 
     for episode in range(num_episodes):
         observation, info = env.reset(seed=episode)
@@ -163,15 +241,36 @@ def evaluate(num_episodes=5):
         total_reward = 0.0
         total_cost = 0.0
         steps = 0
+        unsafe_steps = 0
 
         while True:
-            action = select_action(
+            action, correction_info = select_action(
                 policy,
                 goal_policy,
                 observation,
                 mean,
                 std,
+                corrector=corrector,
             )
+
+            if correction_info is not None:
+                if correction_info["corrected"]:
+                    total_corrected += 1
+
+                if correction_info["safe_candidate_found"]:
+                    total_safe_candidate_found += 1
+
+                correction_distances.append(
+                    correction_info["distance"]
+                )
+
+                proposed_risks.append(
+                    correction_info["proposed_risk"]
+                )
+
+                selected_risks.append(
+                    correction_info["selected_risk"]
+                )
 
             action = np.clip(
                 action,
@@ -182,6 +281,12 @@ def evaluate(num_episodes=5):
             observation, reward, cost, terminated, truncated, info = env.step(
                 action
             )
+            
+            total_steps += 1
+
+            if cost > 0:
+                unsafe_steps += 1
+                total_unsafe_steps += 1
 
             total_reward += float(reward)
             total_cost += float(cost)
@@ -193,6 +298,7 @@ def evaluate(num_episodes=5):
         episode_rewards.append(total_reward)
         episode_costs.append(total_cost)
         episode_lengths.append(steps)
+        
         episode_violations.append(
             float(total_cost > 0)
         )
@@ -201,10 +307,19 @@ def evaluate(num_episodes=5):
             f"Episode {episode + 1}: "
             f"reward={total_reward:.3f}, "
             f"cost={total_cost:.3f}, "
+            f"unsafe_steps={unsafe_steps}, "
             f"length={steps}"
         )
 
     env.close()
+
+    timestep_violation_rate = (
+        total_unsafe_steps / total_steps
+        if total_steps > 0
+        else 0.0
+    )
+
+    episode_violation_rate = np.mean( episode_violations )
 
     print()
     print("Evaluation results")
@@ -221,8 +336,13 @@ def evaluate(num_episodes=5):
     )
 
     print(
-        f"Violation rate: "
-        f"{np.mean(episode_violations):.3f}"
+        f"Episode violation rate: "
+        f"{episode_violation_rate:.3f}"
+    )
+
+    print(
+        f"Timestep violation rate: "
+        f"{timestep_violation_rate:.3f}"
     )
 
     print(
@@ -230,8 +350,83 @@ def evaluate(num_episodes=5):
         f"{np.mean(episode_lengths):.1f}"
     )
 
+    if corrector is not None:
+
+        print()
+        print("Safety correction")
+        print("-----------------")
+
+        print(
+            f"Correction rate: "
+            f"{total_corrected / total_steps:.3f}"
+        )
+
+        print(
+            f"Safe candidate rate: "
+            f"{total_safe_candidate_found / total_steps:.3f}"
+        )
+
+    if correction_distances:
+        print(
+            f"Mean correction distance: "
+            f"{np.mean(correction_distances):.6f}"
+        )
+
+        print(
+            f"Median correction distance: "
+            f"{np.median(correction_distances):.6f}"
+        )
+
+        print(
+            f"Mean proposed risk: "
+            f"{np.mean(proposed_risks):.6f}"
+        )
+
+        print(
+            f"Mean selected risk: "
+            f"{np.mean(selected_risks):.6f}"
+        )
+
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--mode",
+        choices=["por", "safe"],
+        default="por",
+    )
+
+    parser.add_argument(
+        "--episodes",
+        type=int,
+        default=30,
+    )
+
+    parser.add_argument(
+        "--risk-threshold",
+        type=float,
+        default=1.0,
+    )
+
+    parser.add_argument(
+        "--num-candidates",
+        type=int,
+        default=50,
+    )
+
+    parser.add_argument(
+        "--candidate-std",
+        type=float,
+        default=0.10,
+    )
+
+    args = parser.parse_args()
+
     evaluate(
-        num_episodes=30
+        num_episodes=args.episodes,
+        mode=args.mode,
+        risk_threshold=args.risk_threshold,
+        num_candidates=args.num_candidates,
+        candidate_std=args.candidate_std,
     )

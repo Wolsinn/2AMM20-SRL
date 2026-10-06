@@ -1,8 +1,9 @@
 import sys
-from pathlib import Path
-
+import argparse
+import random
 import numpy as np
 import torch
+from pathlib import Path
 from tqdm import trange
 
 
@@ -36,6 +37,35 @@ RUN_DIR = (
 DEVICE = torch.device("cpu")
 
 
+def set_seed(seed):
+    random.seed(seed)
+    np.random.seed(seed)
+    torch.manual_seed(seed)
+
+
+def prepare_por_terminals(dataset):
+    """
+    DSRL distinguishes environment termination from timeout.
+
+    POR expects a single `terminals` signal that determines
+    whether the value target should bootstrap.
+
+    For this fixed-horizon DSRL dataset, episodes end at
+    timeouts, so both terminal and timeout transitions are
+    treated as episode boundaries for POR training.
+    """
+
+    terminals = dataset["terminals"]
+    timeouts = dataset["timeouts"]
+
+    dataset["terminals"] = np.maximum(
+        terminals,
+        timeouts,
+    )
+
+    return dataset
+
+
 def load_dataset(max_transitions=None):
     import h5py
 
@@ -46,19 +76,38 @@ def load_dataset(max_transitions=None):
         n = total if max_transitions is None else min(max_transitions, total)
 
         dataset["observations"] = np.asarray(
-            file["observations"][:n], dtype=np.float32
+            file["observations"][:n],
+            dtype=np.float32
         )
+
         dataset["actions"] = np.asarray(
-            file["actions"][:n], dtype=np.float32
+            file["actions"][:n],
+            dtype=np.float32
         )
+
         dataset["next_observations"] = np.asarray(
-            file["next_observations"][:n], dtype=np.float32
+            file["next_observations"][:n],
+            dtype=np.float32
         )
+
         dataset["rewards"] = np.asarray(
-            file["rewards"][:n], dtype=np.float32
+            file["rewards"][:n],
+            dtype=np.float32
         )
+
         dataset["terminals"] = np.asarray(
-            file["terminals"][:n], dtype=np.float32
+            file["terminals"][:n],
+            dtype=np.float32
+        )
+
+        dataset["timeouts"] = np.asarray(
+            file["timeouts"][:n],
+            dtype=np.float32,
+        )
+
+        dataset["costs"] = np.asarray(
+            file["costs"][:n],
+            dtype=np.float32,
         )
 
     return dataset
@@ -131,12 +180,43 @@ def build_por(obs_dim, act_dim, train_steps):
 
 
 def main():
-    train_steps = 10000
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument(
+        "--mode",
+        choices=["por", "safe"],
+        default="por",
+    )
+
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=10000,
+    )
+
+    parser.add_argument(
+        "--seed",
+        type=int,
+        default=0,
+    )
+
+    parser.add_argument(
+        "--max-transitions",
+        type=int,
+        default=None,
+    )
+
+    args = parser.parse_args()
+
+    set_seed(args.seed)
+
+    train_steps = args.steps
     batch_size = 256
 
     print("Loading DSRL dataset...")
 
-    dataset = load_dataset(max_transitions=None)
+    dataset = load_dataset(max_transitions=args.max_transitions)
+    dataset = prepare_por_terminals(dataset)
 
     print(
         f"Loaded {len(dataset['observations'])} transitions."
@@ -165,7 +245,13 @@ def main():
             batch_size,
         )
 
-        por.por_residual_update(**batch)
+        por.por_residual_update(
+            observations=batch["observations"],
+            actions=batch["actions"],
+            next_observations=batch["next_observations"],
+            rewards=batch["rewards"],
+            terminals=batch["terminals"],
+        )
 
     print("Training finished.")
 
