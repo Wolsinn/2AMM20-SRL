@@ -79,58 +79,46 @@ def main():
 
     batch_size = 4096
 
-    with h5py.File(
-        DATASET_PATH,
-        "r",
-    ) as f:
-
-        observations_ds = f["observations"]
-        actions_ds = f["actions"]
-        costs_ds = f["costs"]
-        timeouts_ds = f["timeouts"]
-
+    with h5py.File(DATASET_PATH, "r") as f:
         # Compute targets one episode at a time.
         episode_length = 1000
-        num_episodes = (
-            len(observations_ds)
-            // episode_length
-        )
 
         split_episode = int(
-            0.8 * num_episodes
+            0.8 * len(f["observations"])
         )
 
-        start_index = (
-            split_episode
-            * episode_length
-        )
+        start_index = split_episode * episode_length
 
         observations = np.asarray(
-            observations_ds[start_index:],
+            f["observations"][start_index:],
             dtype=np.float32,
         )
 
         actions = np.asarray(
-            actions_ds[start_index:],
+            f["actions"][start_index:],
             dtype=np.float32,
         )
 
         costs = np.asarray(
-            costs_ds[start_index:],
+            f["costs"][start_index:],
             dtype=np.float32,
         )
 
-        timeouts = np.asarray(
-            timeouts_ds[start_index:],
+        terminals = np.asarray(
+            f["terminals"][start_index:],
             dtype=bool,
         )
 
-        observations = (
-            observations - mean
-        ) / std
+        timeouts = np.asarray(
+            f["timeouts"][start_index:],
+            dtype=bool,
+        )
+
+        observations = (observations - mean) / std
 
         targets = discounted_cost_to_go(
             costs,
+            terminals,
             timeouts,
             gamma=0.99,
         )
@@ -194,21 +182,13 @@ def main():
 
                 count += len(target)
 
-    mse = (
-        squared_error / count
-    )
+    mse = squared_error / count
 
-    mae = (
-        absolute_error / count
-    )
+    mae = absolute_error / count
 
-    target_mean = (
-        target_sum / count
-    )
+    target_mean = target_sum / count
 
-    prediction_mean = (
-        prediction_sum / count
-    )
+    prediction_mean = prediction_sum / count
 
     target_variance = (
         target_squared_sum / count

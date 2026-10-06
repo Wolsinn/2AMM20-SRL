@@ -64,6 +64,11 @@ def load_data():
             dtype=np.float32,
         )
 
+        terminals = np.asarray(
+            f["terminals"][:],
+            dtype=bool,
+        )
+
         timeouts = np.asarray(
             f["timeouts"][:],
             dtype=bool,
@@ -73,6 +78,7 @@ def load_data():
         observations,
         actions,
         costs,
+        terminals,
         timeouts,
     )
 
@@ -86,6 +92,7 @@ def main():
         observations,
         actions,
         costs,
+        terminals,
         timeouts,
     ) = load_data()
 
@@ -138,6 +145,7 @@ def main():
 
     targets = discounted_cost_to_go(
         costs,
+        discounted_cost_to_go,
         timeouts,
         gamma=0.99,
     )

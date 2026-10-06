@@ -137,6 +137,12 @@ class SafeActionCorrector:
             dtype=np.float32,
         )
 
+        proposed_action = np.clip(
+            proposed_action,
+            self.action_low,
+            self.action_high,
+        )
+
         proposed_risk = self.predict_risk(
             observation,
             proposed_action,

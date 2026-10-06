@@ -3,12 +3,16 @@ import numpy as np
 
 def discounted_cost_to_go(
     costs,
+    terminals,
     timeouts,
     gamma=0.99,
 ):
     """
     Calculate discounted cost-to-go separately
     for every episode.
+
+    An episode boundary occurs when either
+    a terminal state or a timeout is reached.
 
     G_t = c_t + gamma * G_{t+1}
     """
@@ -18,10 +22,17 @@ def discounted_cost_to_go(
         dtype=np.float32,
     )
 
+    terminals = np.asarray(
+        terminals,
+        dtype=bool,
+    )
+
     timeouts = np.asarray(
         timeouts,
         dtype=bool,
     )
+
+    boundaries = terminals | timeouts
 
     targets = np.zeros_like(costs)
 
@@ -36,7 +47,7 @@ def discounted_cost_to_go(
 
         targets[t] = running
 
-        if timeouts[t]:
+        if boundaries[t]:
             running = 0.0
 
     return targets

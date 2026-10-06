@@ -3,10 +3,10 @@ from pathlib import Path
 import h5py
 import numpy as np
 
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 DATASET_PATH = Path(
-    "/home/omer/projects/2AMM20-SRL/data/raw/dsrl/"
-    "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
+    PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
 )
 
 
