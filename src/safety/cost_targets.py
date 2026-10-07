@@ -3,6 +3,8 @@ import numpy as np
 
 def discounted_cost_to_go(costs, terminals, timeouts, gamma=0.99):
     """
+    Qc​(s,a)=ct​+γct+1​+γ2ct+2​+⋯
+
     Calculate discounted cost-to-go separately for every episode.
 
     An episode boundary occurs when either

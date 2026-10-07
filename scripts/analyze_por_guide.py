@@ -48,24 +48,6 @@ def load_goal_policy(obs_dim):
     return goal_policy
 
 
-def update_group_statistics(values, costs, statistics):
-    safe = costs == 0
-    unsafe = costs > 0
-
-    for name, mask in (("safe", safe), ("unsafe", unsafe)):
-
-        group = values[mask]
-
-        if len(group) == 0:
-            continue
-
-        stats = statistics[name]
-        stats["count"] += len(group)
-        stats["sum"] += float(group.sum())
-        stats["sum_sq"] += float(np.square(group).sum())
-        stats["values"].append(group)
-
-
 def calculate_statistics(values):
 
     if not values:
@@ -129,9 +111,7 @@ def main():
                 )
 
                 next_obs = np.asarray(
-                    next_observations[
-                        start:end
-                    ],
+                    next_observations[start:end],
                     dtype=np.float32,
                 )
 
@@ -141,9 +121,7 @@ def main():
                 )
 
                 obs = (obs - mean) / std
-
                 next_obs = (next_obs - mean) / std
-
                 obs_tensor = torch.from_numpy(obs)
 
                 next_obs_tensor = (

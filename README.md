@@ -179,19 +179,27 @@ This checks that SafetyPointGoal1-v0 can be created and stepped through successf
 
 **2. Download and inspect the DSRL dataset**
 
-`python scripts/download_dsrl_dataset.py`
+```
+python scripts/download_dsrl_dataset.py
+```
 
 **3. Inspect the dataset statistics**
 
-`python src/data/inspect_dsrl.py`
+```
+python src/data/inspect_dsrl.py
+```
 
 The current dataset is:
 - `data/raw/dsrl/SafetyPointGoal1Gymnasium-v0-100-2022.hdf5`
 
 **4. Train POR on the DSRL dataset**
 
-- `conda activate por-env`
-- `python scripts/train_por_dsrl.py`
+```
+conda activate por-env
+python scripts/train_por_dsrl.py
+    --steps 10000
+    --seed 0
+```
 
 The current script is configured as a small test using:
 
@@ -209,14 +217,15 @@ experiments/runs/por_dsrl_pointgoal/normalization.npz
 
 **5. Evaluate the trained POR policy**
 
-The evaluation uses the Safety-Gymnasium environment:
-
 ```
 conda activate safe-data-env
-python scripts/evaluate_por_dsrl.py
+python scripts/evaluate_por_dsrl.py \
+    --mode safe \
+    --episodes 30 \
+    --risk-threshold 1.0 \
+    --num-candidates 50 \
+    --candidate-std 0.10
 ```
-
-The script loads the policy and guide-policy networks from `experiments/runs/por_dsrl_pointgoal/` and evaluates them in `SafetyPointGoal1-v0`
 
 For each episode, it reports:
 
@@ -224,7 +233,33 @@ For each episode, it reports:
 - episode safety cost
 - episode length
 
-At the end it reports the mean reward, mean cost, violation rate, and mean episode length.
+
+**6. Analyze POR Guide-State Deviation**
+```
+conda activate safe-data-env
+cd ~/projects/2AMM20-SRL
+python scripts/analyze_por_guide.py
+```
+
+
+**7. Train the Discounted Cost Predictor**
+```
+python scripts/train_cost_predictor.py
+```
+
+
+**8. Evaluate the Cost Predictor**
+```
+python scripts/evaluate_cost_predictor.py
+```
+
+
+**9. Evaluate POR With Safety-Aware Action Correction**
+```
+python scripts/evaluate_por_dsrl.py
+    --mode safe
+    --episodes 30
+```
 
 ## Dependency Snapshots
 
