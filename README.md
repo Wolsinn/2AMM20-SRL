@@ -89,7 +89,7 @@ git clone https://github.com/aravindr93/mjrl.git
 cd mjrl
 git checkout 3871d93763d3b49c4741e6daeaebbc605fe140dc
 pip install -e .
-pip install -r environments/por-lock.txt
+pip install -r ~/projects/2AMM20-SRL/environments/por-lock.txt
 ```
 
 ### 7. (Optional) Run a small POR smoke test
@@ -112,7 +112,7 @@ WANDB_MODE=offline python main_por.py \
 ```
 conda create -n safe-data-env python=3.10 -y
 conda activate safe-data-env
-pip install -r environments/dsrl-lock.txt
+pip install -r  ~/projects/2AMM20-SRL/environments/dsrl-lock.txt
 cd ~/projects/2AMM20-SRL/external
 git clone https://github.com/liuzuxin/DSRL.git
 cd DSRL
