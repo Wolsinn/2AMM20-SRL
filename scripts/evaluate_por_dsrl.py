@@ -1,7 +1,6 @@
+from pathlib import Path
 import sys
 import argparse
-from pathlib import Path
-
 import numpy as np
 import torch
 import safety_gymnasium
@@ -18,16 +17,9 @@ from safety.cost_model import CostPredictor
 from safety.safe_action import SafeActionCorrector
 
 
-RUN_DIR = (
-    PROJECT_ROOT
-    / "experiments"
-    / "runs"
-    / "por_dsrl_pointgoal"
-)
-
+RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
 
 DEVICE = torch.device("cpu")
-
 
 ENV_NAME = "SafetyPointGoal1-v0"
 
@@ -71,10 +63,7 @@ def build_policies(obs_dim, act_dim):
 
 
 def load_policies(obs_dim, act_dim):
-    policy, goal_policy = build_policies(
-        obs_dim,
-        act_dim,
-    )
+    policy, goal_policy = build_policies(obs_dim, act_dim)
 
     policy.load_state_dict(
         torch.load(
@@ -97,33 +86,16 @@ def load_policies(obs_dim, act_dim):
 
 
 def load_normalization():
-    normalization = np.load(
-        RUN_DIR / "normalization.npz"
-    )
-
+    normalization = np.load(RUN_DIR / "normalization.npz")
     mean = normalization["mean"]
     std = normalization["std"]
 
     return mean, std
 
 
-def normalize_observation(observation, mean, std):
-    return (observation - mean) / std
+def select_action(policy, goal_policy, observation, mean, std, corrector=None):
 
-
-def select_action(
-    policy,
-    goal_policy,
-    observation,
-    mean,
-    std,
-    corrector=None,
-):
-    normalized_observation = normalize_observation(
-        observation,
-        mean,
-        std,
-    )
+    normalized_observation = (observation - mean) / std
 
     observation_tensor = torch.tensor(
         normalized_observation,
@@ -149,12 +121,7 @@ def select_action(
             deterministic=True,
         )
 
-    proposed_action = (
-        proposed_action
-        .squeeze(0)
-        .cpu()
-        .numpy()
-    )
+    proposed_action = proposed_action.squeeze(0).cpu().numpy()
 
     if corrector is None:
         return proposed_action, None
@@ -167,13 +134,7 @@ def select_action(
     return result["action"], result
 
 
-def evaluate(
-    num_episodes=5,
-    mode="por",
-    risk_threshold=1.0,
-    num_candidates=50,
-    candidate_std=0.10
-):
+def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, candidate_std=0.10):
     env = safety_gymnasium.make(ENV_NAME)
 
     observation_space = env.observation_space
@@ -189,10 +150,7 @@ def evaluate(
 
     print("Loaded normalization statistics.")
 
-    policy, goal_policy = load_policies(
-        obs_dim,
-        act_dim,
-    )
+    policy, goal_policy = load_policies(obs_dim, act_dim)
 
     corrector = None
 
@@ -211,15 +169,9 @@ def evaluate(
 
         print()
         print("Safety correction enabled")
-        print(
-            f"Risk threshold: {risk_threshold}"
-        )
-        print(
-            f"Candidate actions: {num_candidates}"
-        )
-        print(
-            f"Candidate std: {candidate_std}"
-        )
+        print(f"Risk threshold: {risk_threshold}")
+        print(f"Candidate actions: {num_candidates}")
+        print(f"Candidate std: {candidate_std}")
 
     episode_rewards = []
     episode_costs = []
@@ -260,17 +212,9 @@ def evaluate(
                 if correction_info["safe_candidate_found"]:
                     total_safe_candidate_found += 1
 
-                correction_distances.append(
-                    correction_info["distance"]
-                )
-
-                proposed_risks.append(
-                    correction_info["proposed_risk"]
-                )
-
-                selected_risks.append(
-                    correction_info["selected_risk"]
-                )
+                correction_distances.append(correction_info["distance"])
+                proposed_risks.append(correction_info["proposed_risk"])
+                selected_risks.append(correction_info["selected_risk"])
 
             action = np.clip(
                 action,
@@ -298,10 +242,7 @@ def evaluate(
         episode_rewards.append(total_reward)
         episode_costs.append(total_cost)
         episode_lengths.append(steps)
-        
-        episode_violations.append(
-            float(total_cost > 0)
-        )
+        episode_violations.append(float(total_cost > 0))
 
         print(
             f"Episode {episode + 1}: "
@@ -324,68 +265,25 @@ def evaluate(
     print()
     print("Evaluation results")
     print("------------------")
-
-    print(
-        f"Mean reward: "
-        f"{np.mean(episode_rewards):.3f}"
-    )
-
-    print(
-        f"Mean cost: "
-        f"{np.mean(episode_costs):.3f}"
-    )
-
-    print(
-        f"Episode violation rate: "
-        f"{episode_violation_rate:.3f}"
-    )
-
-    print(
-        f"Timestep violation rate: "
-        f"{timestep_violation_rate:.3f}"
-    )
-
-    print(
-        f"Mean episode length: "
-        f"{np.mean(episode_lengths):.1f}"
-    )
+    print(f"Mean reward: {np.mean(episode_rewards):.3f}")
+    print(f"Mean cost: {np.mean(episode_costs):.3f}")
+    print(f"Episode violation rate: {episode_violation_rate:.3f}")
+    print(f"Timestep violation rate: {timestep_violation_rate:.3f}")
+    print(f"Mean episode length: {np.mean(episode_lengths):.1f}")
 
     if corrector is not None:
 
         print()
         print("Safety correction")
         print("-----------------")
-
-        print(
-            f"Correction rate: "
-            f"{total_corrected / total_steps:.3f}"
-        )
-
-        print(
-            f"Safe candidate rate: "
-            f"{total_safe_candidate_found / total_steps:.3f}"
-        )
+        print(f"Correction rate: {total_corrected / total_steps:.3f}")
+        print(f"Safe candidate rate: {total_safe_candidate_found / total_steps:.3f}")
 
     if correction_distances:
-        print(
-            f"Mean correction distance: "
-            f"{np.mean(correction_distances):.6f}"
-        )
-
-        print(
-            f"Median correction distance: "
-            f"{np.median(correction_distances):.6f}"
-        )
-
-        print(
-            f"Mean proposed risk: "
-            f"{np.mean(proposed_risks):.6f}"
-        )
-
-        print(
-            f"Mean selected risk: "
-            f"{np.mean(selected_risks):.6f}"
-        )
+        print(f"Mean correction distance: {np.mean(correction_distances):.6f}")
+        print(f"Median correction distance: {np.median(correction_distances):.6f}")
+        print(f"Mean proposed risk: {np.mean(proposed_risks):.6f}")
+        print(f"Mean selected risk: {np.mean(selected_risks):.6f}")
 
 
 if __name__ == "__main__":

@@ -1,18 +1,10 @@
 from pathlib import Path
-
 import h5py
 import numpy as np
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
-DATASET_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "raw"
-    / "dsrl"
-    / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
-)
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
 
 CHUNK_SIZE = 10_000
 
@@ -28,25 +20,8 @@ def main():
         n = len(observations)
 
         print(f"Transitions: {n}")
-        print(
-            f"Terminal transitions: "
-            f"{np.count_nonzero(terminals)}"
-        )
-        print(
-            f"Timeout transitions: "
-            f"{np.count_nonzero(timeouts)}"
-        )
-
-        # ------------------------------------------------------------
-        # Check ordinary transition consistency.
-        #
-        # For a transition inside an episode:
-        #
-        #     next_observation[t] == observation[t + 1]
-        #
-        # We process one transition at a time around episode boundaries
-        # rather than loading the complete dataset.
-        # ------------------------------------------------------------
+        print(f"Terminal transitions: {np.count_nonzero(terminals)}")
+        print(f"Timeout transitions: {np.count_nonzero(timeouts)}")
 
         normal_checked = 0
         normal_matches = 0
@@ -75,19 +50,12 @@ def main():
         print()
         print("Normal transition consistency")
         print("--------------------------------")
-
         print(f"Checked: {normal_checked}")
 
         if normal_checked > 0:
             print(f"Matches: {normal_matches}")
-            print(
-                f"Match rate: "
-                f"{normal_matches / normal_checked:.6f}"
-            )
+            print(f"Match rate: {normal_matches / normal_checked:.6f}")
 
-        # ------------------------------------------------------------
-        # Examine timeout boundaries.
-        # ------------------------------------------------------------
 
         timeout_indices = np.flatnonzero(
             np.asarray(timeouts[:], dtype=bool)
@@ -114,9 +82,6 @@ def main():
                 f"{same}"
             )
 
-        # ------------------------------------------------------------
-        # Episode lengths.
-        # ------------------------------------------------------------
 
         episode_lengths = np.diff(
             np.concatenate(
@@ -130,26 +95,10 @@ def main():
         print()
         print("Episode lengths")
         print("----------------")
-
-        print(
-            f"Number of episodes: "
-            f"{len(episode_lengths)}"
-        )
-
-        print(
-            f"Unique lengths: "
-            f"{np.unique(episode_lengths)}"
-        )
-
-        print(
-            f"Minimum length: "
-            f"{episode_lengths.min()}"
-        )
-
-        print(
-            f"Maximum length: "
-            f"{episode_lengths.max()}"
-        )
+        print(f"Number of episodes: {len(episode_lengths)}")
+        print(f"Unique lengths: {np.unique(episode_lengths)}")
+        print(f"Minimum length: {episode_lengths.min()}")
+        print(f"Maximum length: {episode_lengths.max()}")
 
 
 if __name__ == "__main__":

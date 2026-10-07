@@ -18,21 +18,8 @@ from value_functions import TwinV
 from util import sample_batch, torchify
 
 
-DATASET_PATH = (
-    PROJECT_ROOT
-    / "data"
-    / "raw"
-    / "dsrl"
-    / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
-)
-
-RUN_DIR = (
-    PROJECT_ROOT
-    / "experiments"
-    / "runs"
-    / "por_dsrl_pointgoal"
-)
-
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
+RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
 
 DEVICE = torch.device("cpu")
 
@@ -44,24 +31,10 @@ def set_seed(seed):
 
 
 def prepare_por_terminals(dataset):
-    """
-    DSRL distinguishes environment termination from timeout.
-
-    POR expects a single `terminals` signal that determines
-    whether the value target should bootstrap.
-
-    For this fixed-horizon DSRL dataset, episodes end at
-    timeouts, so both terminal and timeout transitions are
-    treated as episode boundaries for POR training.
-    """
-
     terminals = dataset["terminals"]
     timeouts = dataset["timeouts"]
 
-    dataset["terminals"] = np.maximum(
-        terminals,
-        timeouts,
-    )
+    dataset["terminals"] = np.maximum(terminals, timeouts)
 
     return dataset
 

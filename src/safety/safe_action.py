@@ -3,17 +3,6 @@ import torch
 
 
 class SafeActionCorrector:
-    """
-    Deployment-time safety correction for a base policy.
-
-    The base policy proposes an action.
-
-    If the predicted cost is below the safety threshold,
-    the original action is used.
-
-    Otherwise, nearby candidate actions are sampled and
-    evaluated using the learned cost predictor.
-    """
 
     def __init__(
         self,
@@ -25,37 +14,16 @@ class SafeActionCorrector:
         candidate_std=0.10,
         device="cpu",
     ):
-        self.cost_model = cost_model
+        self.cost_model     = cost_model
+        self.action_low     = np.asarray(action_low, dtype=np.float32)
+        self.action_high    = np.asarray(action_high, dtype=np.float32)
+        self.risk_threshold = risk_threshold
+        self.num_candidates = num_candidates
+        self.candidate_std  = candidate_std
+        self.device         = device
 
-        self.action_low = np.asarray(
-            action_low,
-            dtype=np.float32,
-        )
 
-        self.action_high = np.asarray(
-            action_high,
-            dtype=np.float32,
-        )
-
-        self.risk_threshold = (
-            risk_threshold
-        )
-
-        self.num_candidates = (
-            num_candidates
-        )
-
-        self.candidate_std = (
-            candidate_std
-        )
-
-        self.device = device
-
-    def predict_risk(
-        self,
-        observation,
-        actions,
-    ):
+    def predict_risk(self, observation, actions):
         observation_tensor = torch.as_tensor(
             observation,
             dtype=torch.float32,
@@ -69,14 +37,10 @@ class SafeActionCorrector:
         )
 
         if observation_tensor.ndim == 1:
-            observation_tensor = (
-                observation_tensor.unsqueeze(0)
-            )
+            observation_tensor = observation_tensor.unsqueeze(0)
 
         if actions_tensor.ndim == 1:
-            actions_tensor = (
-                actions_tensor.unsqueeze(0)
-            )
+            actions_tensor = actions_tensor.unsqueeze(0)
 
         observation_tensor = (
             observation_tensor.expand(
@@ -86,21 +50,13 @@ class SafeActionCorrector:
         )
 
         with torch.no_grad():
-            risks = self.cost_model(
-                observation_tensor,
-                actions_tensor,
-            )
+            risks = self.cost_model(observation_tensor, actions_tensor)
 
         return risks.cpu().numpy()
 
-    def sample_candidates(
-        self,
-        action,
-    ):
-        action = np.asarray(
-            action,
-            dtype=np.float32,
-        )
+
+    def sample_candidates(self, action):
+        action = np.asarray(action, dtype=np.float32)
 
         noise = np.random.normal(
             loc=0.0,
@@ -111,10 +67,7 @@ class SafeActionCorrector:
             ),
         ).astype(np.float32)
 
-        candidates = (
-            action[None, :]
-            + noise
-        )
+        candidates = action[None, :] + noise
 
         candidates = np.clip(
             candidates,
@@ -127,15 +80,9 @@ class SafeActionCorrector:
 
         return candidates
 
-    def correct(
-        self,
-        observation,
-        proposed_action,
-    ):
-        proposed_action = np.asarray(
-            proposed_action,
-            dtype=np.float32,
-        )
+
+    def correct(self, observation, proposed_action):
+        proposed_action = np.asarray(proposed_action, dtype=np.float32,)
 
         proposed_action = np.clip(
             proposed_action,
@@ -153,109 +100,58 @@ class SafeActionCorrector:
             return {
                 "action": proposed_action,
                 "proposed_action": proposed_action,
-                "proposed_risk": float(
-                    proposed_risk
-                ),
-                "selected_risk": float(
-                    proposed_risk
-                ),
+                "proposed_risk": float(proposed_risk),
+                "selected_risk": float(proposed_risk),
                 "corrected": False,
                 "safe_candidate_found": True,
                 "distance": 0.0,
             }
 
-        candidates = self.sample_candidates(
-            proposed_action
-        )
+        candidates = self.sample_candidates(proposed_action)
 
-        risks = self.predict_risk(
-            observation,
-            candidates,
-        )
+        risks = self.predict_risk(observation, candidates)
 
-        safe_mask = (
-            risks <= self.risk_threshold
-        )
+        safe_mask = (risks <= self.risk_threshold)
 
         if np.any(safe_mask):
 
-            safe_candidates = (
-                candidates[safe_mask]
-            )
-
+            safe_candidates = candidates[safe_mask]
             safe_risks = risks[safe_mask]
 
             distances = np.linalg.norm(
-                safe_candidates
-                - proposed_action,
+                safe_candidates - proposed_action,
                 axis=1,
             )
 
-            # "Closest safe action":
-            # minimize distance to the POR action.
-            selected_index = np.argmin(
-                distances
-            )
-
-            selected_action = (
-                safe_candidates[selected_index]
-            )
-
-            selected_risk = (
-                safe_risks[selected_index]
-            )
-
-            distance = distances[
-                selected_index
-            ]
+            # "Closest safe action": minimize distance to the POR action
+            selected_index = np.argmin(distances)
+            selected_action = safe_candidates[selected_index]
+            selected_risk = safe_risks[selected_index]
+            distance = distances[selected_index]
 
             return {
                 "action": selected_action,
                 "proposed_action": proposed_action,
-                "proposed_risk": float(
-                    proposed_risk
-                ),
-                "selected_risk": float(
-                    selected_risk
-                ),
+                "proposed_risk": float(proposed_risk),
+                "selected_risk": float(selected_risk),
                 "corrected": True,
                 "safe_candidate_found": True,
-                "distance": float(
-                    distance
-                ),
+                "distance": float(distance),
             }
 
-        # No candidate satisfies the threshold.
-        # Fall back to the least risky candidate.
-        selected_index = np.argmin(
-            risks
-        )
+        # No candidate satisfies the threshold - fall back to the least risky candidate.
+        selected_index = np.argmin(risks)
+        selected_action = candidates[selected_index]
+        selected_risk = risks[selected_index]
 
-        selected_action = (
-            candidates[selected_index]
-        )
-
-        selected_risk = risks[
-            selected_index
-        ]
-
-        distance = np.linalg.norm(
-            selected_action
-            - proposed_action
-        )
+        distance = np.linalg.norm(selected_action - proposed_action)
 
         return {
             "action": selected_action,
             "proposed_action": proposed_action,
-            "proposed_risk": float(
-                proposed_risk
-            ),
-            "selected_risk": float(
-                selected_risk
-            ),
+            "proposed_risk": float(proposed_risk),
+            "selected_risk": float(selected_risk),
             "corrected": True,
             "safe_candidate_found": False,
-            "distance": float(
-                distance
-            ),
+            "distance": float(distance),
         }
