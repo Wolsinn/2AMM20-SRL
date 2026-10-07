@@ -65,6 +65,17 @@ def calculate_statistics(values):
         "p99":    float(np.percentile(values, 99)),
     }
 
+def print_statistics(title, stats):
+    print()
+    print(title)
+    print("-" * len(title))
+    print(f"Count:  {stats['count']:,}")
+    print(f"Mean:   {stats['mean']:.6f}")
+    print(f"Std:    {stats['std']:.6f}")
+    print(f"Median: {stats['median']:.6f}")
+    print(f"P90:    {stats['p90']:.6f}")
+    print(f"P95:    {stats['p95']:.6f}")
+    print(f"P99:    {stats['p99']:.6f}")
 
 def main():
     mean, std = load_normalization()
@@ -182,36 +193,9 @@ def main():
     safe_stats   = calculate_statistics(safe_distances)
     unsafe_stats = calculate_statistics(unsafe_distances)
 
-    print()
-    print("Overall guide deviation")
-    print("-----------------------")
-    print(f"Count:  {all_stats['count']:,}")
-    print(f"Mean:   {all_stats['mean']:.6f}")
-    print(f"Std:    {all_stats['std']:.6f}")
-    print(f"Median: {all_stats['median']:.6f}")
-    print(f"P90:    {all_stats['p90']:.6f}")
-    print(f"P95:    {all_stats['p95']:.6f}")
-    print(f"P99:    {all_stats['p99']:.6f}")
-
-    print()
-    print("Safe transitions")
-    print("----------------")
-    print(f"Count:  {safe_stats['count']:,}")
-    print(f"Mean:   {safe_stats['mean']:.6f}")
-    print(f"Std:    {safe_stats['std']:.6f}")
-    print(f"Median: {safe_stats['median']:.6f}")
-    print(f"P90:    {safe_stats['p90']:.6f}")
-    print(f"P95:    {safe_stats['p95']:.6f}")
-
-    print()
-    print("Costly transitions")
-    print("------------------")
-    print(f"Count:  {unsafe_stats['count']:,}")
-    print(f"Mean:   {unsafe_stats['mean']:.6f}")
-    print(f"Std:    {unsafe_stats['std']:.6f}")
-    print(f"Median: {unsafe_stats['median']:.6f}")
-    print(f"P90:    {unsafe_stats['p90']:.6f}")
-    print(f"P95:    {unsafe_stats['p95']:.6f}")
+    print_statistics("Overall guide deviation", all_stats)
+    print_statistics("Safe transitions", safe_stats)
+    print_statistics("Costly transitions", unsafe_stats)
 
     n = correlation_count
 

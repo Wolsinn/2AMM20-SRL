@@ -52,7 +52,8 @@ def main():
 
     with h5py.File(DATASET_PATH, "r") as f:
         episode_length = 1000
-        split_episode  = int(0.8 * len(f["observations"]))
+        num_episodes = len(f["observations"]) // episode_length
+        split_episode  = int(0.8 * num_episodes)
         start_index    = split_episode * episode_length
 
         observations = np.asarray(

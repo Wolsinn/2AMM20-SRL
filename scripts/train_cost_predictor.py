@@ -158,29 +158,21 @@ def main():
         validation_squared_error = 0.0
         validation_count = 0
 
+        validation_dataset = TensorDataset(
+            torch.from_numpy(validation_states),
+            torch.from_numpy(validation_actions),
+            torch.from_numpy(validation_targets),
+        )
+
+        validation_loader = DataLoader(validation_dataset, batch_size=BATCH_SIZE, shuffle=False)
+
         with torch.no_grad():
 
-            for start in range(0, len(validation_states), BATCH_SIZE):
-
-                end = min(start + BATCH_SIZE, len(validation_states),)
-
-                state = torch.from_numpy(
-                    validation_states[start:end]
-                ).to(DEVICE)
-
-                action = torch.from_numpy(
-                    validation_actions[start:end]
-                ).to(DEVICE)
-
-                target = torch.from_numpy(
-                    validation_targets[start:end]
-                ).to(DEVICE)
-
+            for state, action, target in validation_loader:
                 prediction = model(state, action)
 
                 error = prediction - target
                 validation_squared_error += (torch.sum(error ** 2).item())
-
                 validation_count += len(state)
 
         validation_loss = (validation_squared_error / validation_count)

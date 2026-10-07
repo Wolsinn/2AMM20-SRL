@@ -91,9 +91,7 @@ def prepare_dataset(dataset):
 
     for key in required_keys:
         if key not in dataset:
-            raise KeyError(
-                f"Required dataset field '{key}' is missing."
-            )
+            raise KeyError(f"Required dataset field '{key}' is missing.")
 
     obs_dim = dataset["observations"].shape[1]
 
@@ -156,12 +154,6 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument(
-        "--mode",
-        choices=["por", "safe"],
-        default="por",
-    )
-
-    parser.add_argument(
         "--steps",
         type=int,
         default=10000,
@@ -201,7 +193,6 @@ def main():
 
     print(f"Observation dimension: {obs_dim}")
     print(f"Action dimension: {act_dim}")
-
     print("Building POR...")
 
     por, policy, goal_policy = build_por(
@@ -213,10 +204,7 @@ def main():
     print("Starting POR training...")
 
     for step in trange(train_steps):
-        batch = sample_batch(
-            dataset,
-            batch_size,
-        )
+        batch = sample_batch(dataset, batch_size)
 
         por.por_residual_update(
             observations=batch["observations"],
