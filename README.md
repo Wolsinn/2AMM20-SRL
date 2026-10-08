@@ -256,8 +256,8 @@ python scripts/evaluate_cost_predictor.py
 
 **9. Evaluate POR With Safety-Aware Action Correction**
 ```
-python scripts/evaluate_por_dsrl.py
-    --mode safe
+python scripts/evaluate_por_dsrl.py \
+    --mode safe \
     --episodes 30
 ```
 
