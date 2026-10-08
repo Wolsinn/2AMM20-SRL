@@ -196,8 +196,8 @@ The current dataset is:
 
 ```
 conda activate por-env
-python scripts/train_por_dsrl.py
-    --steps 10000
+python scripts/train_por_dsrl.py \
+    --steps 10000 \
     --seed 0
 ```
 
