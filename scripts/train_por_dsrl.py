@@ -153,23 +153,9 @@ def build_por(obs_dim, act_dim, train_steps):
 def main():
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "--steps",
-        type=int,
-        default=10000,
-    )
-
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=0,
-    )
-
-    parser.add_argument(
-        "--max-transitions",
-        type=int,
-        default=None,
-    )
+    parser.add_argument("--steps", type=int, default=10000)
+    parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--max-transitions", type=int, default=None)
 
     args = parser.parse_args()
 
@@ -195,11 +181,7 @@ def main():
     print(f"Action dimension: {act_dim}")
     print("Building POR...")
 
-    por, policy, goal_policy = build_por(
-        obs_dim,
-        act_dim,
-        train_steps,
-    )
+    por, policy, goal_policy = build_por(obs_dim, act_dim, train_steps)
 
     print("Starting POR training...")
 

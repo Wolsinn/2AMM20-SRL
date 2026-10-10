@@ -35,9 +35,7 @@ def load_cost_model():
         checkpoint["action_dim"],
     )
 
-    model.load_state_dict(
-        checkpoint["model"]
-    )
+    model.load_state_dict(checkpoint["model"])
 
     model.eval()
 
@@ -193,7 +191,6 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, 
         total_reward = 0.0
         total_cost = 0.0
         steps = 0
-        unsafe_steps = 0
 
         while True:
             action, correction_info = select_action(
@@ -222,14 +219,11 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, 
                 action_space.high,
             )
 
-            observation, reward, cost, terminated, truncated, info = env.step(
-                action
-            )
+            observation, reward, cost, terminated, truncated, info = env.step(action)
             
             total_steps += 1
 
             if cost > 0:
-                unsafe_steps += 1
                 total_unsafe_steps += 1
 
             total_reward += float(reward)
@@ -248,7 +242,6 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, 
             f"Episode {episode + 1}: "
             f"reward={total_reward:.3f}, "
             f"cost={total_cost:.3f}, "
-            f"unsafe_steps={unsafe_steps}, "
             f"length={steps}"
         )
 
@@ -289,35 +282,11 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
-    parser.add_argument(
-        "--mode",
-        choices=["por", "safe"],
-        default="por",
-    )
-
-    parser.add_argument(
-        "--episodes",
-        type=int,
-        default=30,
-    )
-
-    parser.add_argument(
-        "--risk-threshold",
-        type=float,
-        default=1.0,
-    )
-
-    parser.add_argument(
-        "--num-candidates",
-        type=int,
-        default=50,
-    )
-
-    parser.add_argument(
-        "--candidate-std",
-        type=float,
-        default=0.10,
-    )
+    parser.add_argument("--mode", choices=["por", "safe"], default="por")
+    parser.add_argument("--episodes", type=int, default=30)
+    parser.add_argument("--risk-threshold", type=float, default=1.0)
+    parser.add_argument("--num-candidates", type=int, default=50)
+    parser.add_argument("--candidate-std", type=float, default=0.10)
 
     args = parser.parse_args()
 
