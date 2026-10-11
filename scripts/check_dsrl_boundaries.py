@@ -47,8 +47,7 @@ def main():
             normal_checked += len(matches)
             normal_matches += int(matches.sum())
 
-        print()
-        print("Normal transition consistency")
+        print("\nNormal transition consistency")
         print("--------------------------------")
         print(f"Checked: {normal_checked}")
 
@@ -61,8 +60,7 @@ def main():
             np.asarray(timeouts[:], dtype=bool)
         )
 
-        print()
-        print("Timeout boundaries")
+        print("\nTimeout boundaries")
         print("------------------")
 
         for idx in timeout_indices[:10]:
@@ -70,11 +68,7 @@ def main():
             stored_next_obs = next_observations[idx]
             next_episode_obs = observations[idx + 1]
 
-            same = np.isclose(
-                stored_next_obs,
-                next_episode_obs,
-                atol=1e-6,
-            ).all()
+            same = np.isclose(stored_next_obs, next_episode_obs, atol=1e-6).all()
 
             print(
                 f"transition={idx:7d} | "
@@ -92,8 +86,7 @@ def main():
             )
         )
 
-        print()
-        print("Episode lengths")
+        print("\nEpisode lengths")
         print("----------------")
         print(f"Number of episodes: {len(episode_lengths)}")
         print(f"Unique lengths: {np.unique(episode_lengths)}")

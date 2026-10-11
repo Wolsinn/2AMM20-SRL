@@ -16,13 +16,18 @@ MODEL_PATH   = MODEL_DIR / "cost_predictor.pt"
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 
 from safety.cost_model import CostPredictor
-from safety.cost_targets import discounted_cost_to_go
+from safety.cost_targets import (
+    concatenate_episode_ranges,
+    discounted_cost_to_go,
+    episode_ranges,
+    stratified_episode_split,
+)
 
 
 DEVICE = torch.device("cpu")
 
-EPISODE_LENGTH = 1000
 TRAIN_FRACTION = 0.8
+SPLIT_SEED = 42
 BATCH_SIZE = 1024
 EPOCHS = 20
 LEARNING_RATE = 1e-3
@@ -67,13 +72,21 @@ def main():
 
     observations, actions, costs, terminals, timeouts = load_data()
 
-    num_episodes = len(observations) // EPISODE_LENGTH
-    train_episodes = int(TRAIN_FRACTION * num_episodes)
-    train_end = train_episodes * EPISODE_LENGTH
+    all_episodes = episode_ranges(terminals, timeouts)
+    train_ranges, validation_ranges = stratified_episode_split(
+        costs,
+        terminals,
+        timeouts,
+        validation_fraction=1.0 - TRAIN_FRACTION,
+        seed=SPLIT_SEED,
+    )
+    num_episodes = len(all_episodes)
+    train_episodes = len(train_ranges)
+    validation_episodes = len(validation_ranges)
 
     print(f"Total episodes: {num_episodes}")
     print(f"Training episodes: {train_episodes}")
-    print(f"Validation episodes: {num_episodes - train_episodes}")
+    print(f"Validation episodes: {validation_episodes}")
 
     normalization = np.load(MODEL_DIR / "normalization.npz")
     mean = normalization["mean"]
@@ -82,12 +95,12 @@ def main():
 
     targets = discounted_cost_to_go(costs, terminals, timeouts, gamma=0.99)
 
-    train_states       = observations[:train_end]
-    train_actions      = actions[:train_end]
-    train_targets      = targets[:train_end]
-    validation_states  = observations[train_end:]
-    validation_actions = actions[train_end:]
-    validation_targets = targets[train_end:]
+    train_states = concatenate_episode_ranges(observations, train_ranges)
+    train_actions = concatenate_episode_ranges(actions, train_ranges)
+    train_targets = concatenate_episode_ranges(targets, train_ranges)
+    validation_states = concatenate_episode_ranges(observations, validation_ranges)
+    validation_actions = concatenate_episode_ranges(actions, validation_ranges)
+    validation_targets = concatenate_episode_ranges(targets, validation_ranges)
     
     train_dataset = TensorDataset(
         torch.from_numpy(train_states),
@@ -206,7 +219,10 @@ def main():
             "state_dim": state_dim,
             "action_dim": action_dim,
             "train_episodes": train_episodes,
-            "validation_episodes": (num_episodes - train_episodes),
+            "validation_episodes": validation_episodes,
+            "split_seed": SPLIT_SEED,
+            "validation_fraction": 1.0 - TRAIN_FRACTION,
+            "validation_episode_ranges": validation_ranges,
             "gamma": 0.99,
         },
         MODEL_PATH,

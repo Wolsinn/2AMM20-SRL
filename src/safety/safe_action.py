@@ -13,6 +13,7 @@ class SafeActionCorrector:
         num_candidates=50,
         candidate_std=0.10,
         device="cpu",
+        seed=None,
     ):
         self.cost_model     = cost_model
         self.action_low     = np.asarray(action_low, dtype=np.float32)
@@ -21,6 +22,7 @@ class SafeActionCorrector:
         self.num_candidates = num_candidates
         self.candidate_std  = candidate_std
         self.device         = device
+        self.rng            = np.random.default_rng(seed)
 
 
     def predict_risk(self, observation, actions):
@@ -55,10 +57,11 @@ class SafeActionCorrector:
         return risks.cpu().numpy()
 
 
-    def sample_candidates(self, action):
+    def sample_candidates(self, action, seed=None):
         action = np.asarray(action, dtype=np.float32)
 
-        noise = np.random.normal(
+        rng = self.rng if seed is None else np.random.default_rng(seed)
+        noise = rng.normal(
             loc=0.0,
             scale=self.candidate_std,
             size=(
@@ -81,7 +84,7 @@ class SafeActionCorrector:
         return candidates
 
 
-    def correct(self, observation, proposed_action):
+    def correct(self, observation, proposed_action, sampling_seed=None):
         proposed_action = np.asarray(proposed_action, dtype=np.float32,)
 
         proposed_action = np.clip(
@@ -103,11 +106,12 @@ class SafeActionCorrector:
                 "proposed_risk": float(proposed_risk),
                 "selected_risk": float(proposed_risk),
                 "corrected": False,
-                "safe_candidate_found": True,
+                "search_attempted": False,
+                "safe_candidate_found": False,
                 "distance": 0.0,
             }
 
-        candidates = self.sample_candidates(proposed_action)
+        candidates = self.sample_candidates(proposed_action, seed=sampling_seed)
 
         risks = self.predict_risk(observation, candidates)
 
@@ -135,6 +139,7 @@ class SafeActionCorrector:
                 "proposed_risk": float(proposed_risk),
                 "selected_risk": float(selected_risk),
                 "corrected": True,
+                "search_attempted": True,
                 "safe_candidate_found": True,
                 "distance": float(distance),
             }
@@ -152,6 +157,7 @@ class SafeActionCorrector:
             "proposed_risk": float(proposed_risk),
             "selected_risk": float(selected_risk),
             "corrected": True,
+            "search_attempted": True,
             "safe_candidate_found": False,
             "distance": float(distance),
         }
