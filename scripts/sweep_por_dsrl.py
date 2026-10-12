@@ -1,11 +1,12 @@
+from pathlib import Path
 from collections import defaultdict
 import argparse
 import csv
 import subprocess
 import sys
 
-from project_paths import PROJECT_ROOT, RESULTS_DIR
-
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+RESULTS_DIR = PROJECT_ROOT / "experiments" / "results"
 EVALUATOR = PROJECT_ROOT / "scripts" / "evaluate_por_dsrl.py"
 DEFAULT_OUTPUT = RESULTS_DIR / "paired_sweep.csv"
 
@@ -19,21 +20,26 @@ def read_rows(path):
 
 def run_evaluation(command):
     print("\n$ " + " ".join(str(part) for part in command), flush=True)
-    result = subprocess.run(
+    process = subprocess.Popen(
         command,
         cwd=PROJECT_ROOT,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         text=True,
+        bufsize=1,
     )
-    print(result.stdout, end="", flush=True)
-    if result.returncode != 0:
-        raise subprocess.CalledProcessError(result.returncode, command)
 
-    csv_line = next(
-        (line for line in result.stdout.splitlines() if line.startswith("CSV_OUTPUT=")),
-        None,
-    )
+    csv_line = None
+    assert process.stdout is not None
+    for line in process.stdout:
+        print(line, end="", flush=True)
+        if line.startswith("CSV_OUTPUT="):
+            csv_line = line.strip()
+
+    return_code = process.wait()
+    if return_code != 0:
+        raise subprocess.CalledProcessError(return_code, command)
+
     if csv_line is None:
         raise RuntimeError("Evaluator completed without reporting its CSV output path")
     return Path(csv_line.split("=", 1)[1].strip())
@@ -45,7 +51,7 @@ def main():
     )
     parser.add_argument("--seeds", nargs="+", type=int, default=[0])
     parser.add_argument("--episodes", type=int, default=30)
-    parser.add_argument("--thresholds", nargs="+", type=float, default=[0.45, 2.5, 3.5])
+    parser.add_argument("--thresholds", nargs="+", type=float, default=[2.5, 3.5, 5.0])
     parser.add_argument("--candidate-stds", nargs="+", type=float, default=[0.10])
     parser.add_argument("--num-candidates", type=int, default=75)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
@@ -62,6 +68,7 @@ def main():
     partial_path.parent.mkdir(parents=True, exist_ok=True)
     common = [
         sys.executable,
+        "-u",
         str(EVALUATOR),
         "--episodes",
         str(args.episodes),

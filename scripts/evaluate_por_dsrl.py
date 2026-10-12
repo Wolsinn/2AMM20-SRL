@@ -4,6 +4,7 @@ import argparse
 import csv
 import numpy as np
 import torch
+import datetime as dt
 import safety_gymnasium
 
 
@@ -135,7 +136,7 @@ def select_action(policy, goal_policy, observation, mean, std, corrector=None, s
     return result["action"], result
 
 
-def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, candidate_std=0.10, seed=0):
+def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, candidate_std=0.10, seed=0):
     env = safety_gymnasium.make(ENV_NAME)
 
     observation_space = env.observation_space
@@ -179,7 +180,7 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=1.0, num_candidates=50, 
     episode_lengths = []
     episode_violations = []
     episode_rows = []
-    evaluation_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
+    evaluation_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
 
     total_corrected = 0
     total_safe_candidate_found = 0
@@ -323,7 +324,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--mode", choices=["por", "safe"], default="por")
     parser.add_argument("--episodes", type=int, default=30)
-    parser.add_argument("--risk-threshold", type=float, default=1.0)
+    parser.add_argument("--risk-threshold", type=float, default=5.0)
     parser.add_argument("--num-candidates", type=int, default=50)
     parser.add_argument("--candidate-std", type=float, default=0.10)
     parser.add_argument("--seed", type=int, default=0)
