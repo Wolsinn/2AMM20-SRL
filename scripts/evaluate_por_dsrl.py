@@ -20,11 +20,13 @@ from safety.cost_model import CostPredictor
 from safety.safe_action import SafeActionCorrector
 
 
-RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
+# RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
+RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
 
 DEVICE = torch.device("cpu")
 
-ENV_NAME = "SafetyPointGoal1-v0"
+# ENV_NAME = "SafetyPointGoal1-v0"
+ENV_NAME = "SafetyCarButton1-v0"
 
 
 def load_cost_model():

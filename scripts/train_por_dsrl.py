@@ -18,8 +18,10 @@ from value_functions import TwinV
 from util import sample_batch, torchify
 
 
-DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
-RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
+# DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
+# RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
+RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
 
 DEVICE = torch.device("cpu")
 

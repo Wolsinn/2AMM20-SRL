@@ -1,7 +1,8 @@
 import safety_gymnasium
 
 
-ENV_NAME = "SafetyPointGoal1-v0"
+# ENV_NAME = "SafetyPointGoal1-v0"
+ENV_NAME = "SafetyCarButton1-v0"
 
 
 def main():
