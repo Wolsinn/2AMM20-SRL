@@ -6,7 +6,8 @@ import numpy as np
 import torch
 import datetime as dt
 import safety_gymnasium
-
+import gymnasium
+import dsrl
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 POR_DIR = PROJECT_ROOT / "external" / "POR"
@@ -25,6 +26,7 @@ RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
 DEVICE = torch.device("cpu")
 
 ENV_NAME = "SafetyPointGoal1-v0"
+SCORE_ENV_NAME = "OfflinePointGoal1Gymnasium-v0"  
 
 
 def load_cost_model():
@@ -136,8 +138,10 @@ def select_action(policy, goal_policy, observation, mean, std, corrector=None, s
     return result["action"], result
 
 
-def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, candidate_std=0.10, seed=0):
+def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, candidate_std=0.10, seed=0, target_cost=10):
     env = safety_gymnasium.make(ENV_NAME)
+    score_env = gymnasium.make(SCORE_ENV_NAME)
+    score_env.set_target_cost(target_cost)
 
     observation_space = env.observation_space
     action_space = env.action_space
@@ -179,6 +183,8 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
     episode_costs = []
     episode_lengths = []
     episode_violations = []
+    episode_norm_rewards = []
+    episode_norm_costs = []
     episode_rows = []
     evaluation_id = dt.datetime.now(dt.timezone.utc).strftime("%Y%m%dT%H%M%S.%fZ")
 
@@ -244,6 +250,9 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
             if terminated or truncated:
                 break
 
+        norm_reward, norm_cost = score_env.get_normalized_score(total_reward, total_cost)
+        episode_norm_rewards.append(norm_reward)
+        episode_norm_costs.append(norm_cost)
         episode_rewards.append(total_reward)
         episode_costs.append(total_cost)
         episode_lengths.append(steps)
@@ -262,6 +271,10 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
                 "unsafe_steps": unsafe_steps,
                 "length": steps,
                 "violated": int(total_cost > 0),
+                "target_cost": target_cost,
+                "normalized_reward": norm_reward,
+                "normalized_cost": norm_cost,
+                "within_target": int(norm_cost <= 1.0),
             }
         )
 
@@ -273,6 +286,7 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
         )
 
     env.close()
+    score_env.close()
 
     csv_path = RESULTS_DIR / f"por_dsrl_{mode}_seed{seed}_{evaluation_id}.csv"
 
@@ -295,6 +309,9 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
     print("------------------")
     print(f"Mean reward: {np.mean(episode_rewards):.3f}")
     print(f"Mean cost: {np.mean(episode_costs):.3f}")
+    print(f"Normalized reward: {np.mean(episode_norm_rewards):.3f}")
+    print(f"Normalized cost: {np.mean(episode_norm_costs):.3f} (target cost = {target_cost:g})")
+    print(f"Episodes within cost target: {np.mean(np.array(episode_norm_costs) <= 1.0):.3f}")
     print(f"Episode violation rate: {episode_violation_rate:.3f}")
     print(f"Timestep violation rate: {timestep_violation_rate:.3f}")
     print(f"Mean episode length: {np.mean(episode_lengths):.1f}")
@@ -328,6 +345,7 @@ if __name__ == "__main__":
     parser.add_argument("--num-candidates", type=int, default=50)
     parser.add_argument("--candidate-std", type=float, default=0.10)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--target-cost", type=float, default=10.0)
 
     args = parser.parse_args()
 
@@ -338,4 +356,5 @@ if __name__ == "__main__":
         num_candidates=args.num_candidates,
         candidate_std=args.candidate_std,
         seed=args.seed,
+        target_cost=args.target_cost
     )
