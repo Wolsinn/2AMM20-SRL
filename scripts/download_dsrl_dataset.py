@@ -1,30 +1,55 @@
 import os
+from pathlib import Path
+import h5py
 import gymnasium as gym
 import dsrl
 
 
-ENV_NAME = "OfflinePointGoal1-v0"
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+DATASET_DIR = PROJECT_ROOT / "data" / "raw" / "dsrl"
+DATASET_FILENAME = "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
 
 
 def main():
-    print("DSRL dataset directory:")
-    print(os.environ.get("DSRL_DATASET_DIR"))
+    DATASET_DIR.mkdir(parents=True, exist_ok=True)
 
-    env = gym.make(ENV_NAME)
+    # Tell DSRL where to store datasets, if supported by this installation.
+    os.environ["DSRL_DATASET_DIR"] = str(DATASET_DIR)
 
-    dataset = env.get_dataset()
+    env_name = "OfflineCarButton1-v0"
 
-    print()
-    print("Environment:", ENV_NAME)
-    print()
+    print(f"Dataset directory: {DATASET_DIR}")
+    print(f"Environment: {env_name}")
 
-    for key, value in dataset.items():
-        if hasattr(value, "shape"):
-            print(f"{key:20s} shape={value.shape} dtype={value.dtype}")
-        else:
-            print(f"{key:20s} type={type(value)}")
+    env = gym.make(env_name)
 
-    env.close()
+    try:
+        dataset = env.get_dataset()
+
+        print("\nDataset contents:")
+        for key, value in dataset.items():
+            if hasattr(value, "shape"):
+                print(
+                    f"{key:20s} "
+                    f"shape={value.shape} "
+                    f"dtype={value.dtype}"
+                )
+
+        output_path = DATASET_DIR / DATASET_FILENAME
+
+        with h5py.File(output_path, "w") as f:
+            for key, value in dataset.items():
+                f.create_dataset(
+                    key,
+                    data=value,
+                    compression="gzip",
+                )
+
+        print(f"\nDataset saved to: {output_path}")
+        print(f"File size: {output_path.stat().st_size / (1024**3):.2f} GiB")
+
+    finally:
+        env.close()
 
 
 if __name__ == "__main__":
