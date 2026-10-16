@@ -25,7 +25,8 @@ from safety.cost_targets import (
 )
 
 
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 
 VALIDATION_FRACTION = 0.10
 TEST_FRACTION = 0.20
@@ -33,9 +34,9 @@ TEST_SPLIT_SEED = 42        # fixed: the test episodes are identical for every s
 # TRAIN_FRACTION = 0.8      # replaced by the three-way split
 # SPLIT_SEED = 42           # replaced by TEST_SPLIT_SEED and the per-run seed
 BATCH_SIZE = 1024
-EPOCHS = 2
+EPOCHS = 20
 LEARNING_RATE = 1e-3
-GAMMA = 0.99
+GAMMA = 0.9 
 
 
 def load_data():
@@ -49,7 +50,7 @@ def load_data():
     return observations, actions, costs, terminals, timeouts
 
 
-def train_one_seed(seed, observations, actions, targets, costs, terminals, timeouts):
+def train_one_seed(seed, observations, actions, targets, costs, terminals, timeouts, args_num_seeds):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -151,7 +152,9 @@ def train_one_seed(seed, observations, actions, targets, costs, terminals, timeo
 
     model.load_state_dict(best_state)
 
-    model_path = MODEL_DIR / f"cost_predictor_seed{seed}.pt"
+    model_filename = "cost_predictor.pt" if args_num_seeds == 1 else f"cost_predictor_seed{seed}.pt"
+    model_path = MODEL_DIR / model_filename
+
     torch.save(
         {
             "model": model.state_dict(),
@@ -183,6 +186,8 @@ def main():
     parser.add_argument("--num-seeds", type=int, default=5)
     args = parser.parse_args()
 
+    print(f"Using device: {DEVICE}")
+
     observations, actions, costs, terminals, timeouts = load_data()
 
     normalization = np.load(MODEL_DIR / "normalization.npz")
@@ -193,7 +198,7 @@ def main():
     MODEL_DIR.mkdir(parents=True, exist_ok=True)
 
     best_losses = [
-        train_one_seed(seed, observations, actions, targets, costs, terminals, timeouts)
+        train_one_seed(seed, observations, actions, targets, costs, terminals, timeouts, args.num_seeds)
         for seed in range(args.num_seeds)
     ]
 

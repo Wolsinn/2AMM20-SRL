@@ -95,27 +95,45 @@ def evaluate_ranges(observations, actions, targets, ranges, model, taus):
 
     return metrics
 
-
+METRICS_TO_PRINT = ("mse", "mae", "r2")
 def print_metrics(title, metrics):
     print(title)
     print("-" * len(title))
+
+    for name in METRICS_TO_PRINT:
+        print(f"{name:<15}{metrics[name]:.6f}")
+
+    # Print AUROC and AUPRC for each requested threshold
     for name, value in metrics.items():
-        text = f"{value}" if isinstance(value, int) else f"{value:.6f}"
-        print(f"{name:<30}{text}")
+        if name.startswith(("positive_rate_tau", "auroc_tau", "auprc_tau")):
+            print(f"{name:<15}{value:.6f}")
+
+
 
 
 def print_summary(title, results):
     print(title)
     print("-" * len(title))
-    for name in results[0]:
-        values = np.array([result[name] for result in results], dtype=np.float64)
+
+    metric_names = list(METRICS_TO_PRINT)
+    metric_names += [
+        name for name in results[0]
+        if name.startswith(("positive_rate_tau", "auroc_tau", "auprc_tau"))
+    ]
+
+    for name in metric_names:
+        values = np.array(
+            [result[name] for result in results], dtype=np.float64
+        )
+        mean = np.nanmean(values) if not np.all(np.isnan(values)) else float("nan")
         std = np.nanstd(values, ddof=1) if len(values) > 1 else 0.0
-        print(f"{name:<30}{np.nanmean(values):.6f} ± {std:.6f}")
+        print(f"{name:<30}{mean:.6f} ± {std:.6f}")
+
 
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--num-seeds", type=int, default=5)
+    parser.add_argument("--num-seeds", type=int, default=3)
     parser.add_argument(
         "--split",
         choices=["validation", "test"],
@@ -138,26 +156,44 @@ def main():
 
     observations = ((observations - mean) / std).astype(np.float32)
 
+
     results = []
     reference_ranges = None
+    single_seed = args.num_seeds == 1
 
     for seed in range(args.num_seeds):
-        checkpoint = torch.load(MODEL_DIR / f"cost_predictor_seed{seed}.pt", map_location=DEVICE)
+        checkpoint_name = (
+            "cost_predictor.pt"
+            if single_seed
+            else f"cost_predictor_seed{seed}.pt"
+        )
+        checkpoint = torch.load(
+            MODEL_DIR / checkpoint_name,
+            map_location=DEVICE,
+        )
 
-        model = CostPredictor(checkpoint["state_dim"], checkpoint["action_dim"]).to(DEVICE)
+        model = CostPredictor(
+            checkpoint["state_dim"], checkpoint["action_dim"]
+        ).to(DEVICE)
         model.load_state_dict(checkpoint["model"])
         model.eval()
 
         # Leakage check: the three splits must be disjoint
         split_sets = {
-            name: {tuple(bounds) for bounds in checkpoint[f"{name}_episode_ranges"]}
+            name: {
+                tuple(bounds)
+                for bounds in checkpoint[f"{name}_episode_ranges"]
+            }
             for name in ("train", "validation", "test")
         }
         assert not (split_sets["train"] & split_sets["validation"])
         assert not (split_sets["train"] & split_sets["test"])
         assert not (split_sets["validation"] & split_sets["test"])
 
-        ranges = [tuple(bounds) for bounds in checkpoint[f"{args.split}_episode_ranges"]]
+        ranges = [
+            tuple(bounds)
+            for bounds in checkpoint[f"{args.split}_episode_ranges"]
+        ]
 
         # The test set must be identical for every seed
         if args.split == "test":
@@ -166,13 +202,33 @@ def main():
             elif ranges != reference_ranges:
                 raise RuntimeError(f"Seed {seed} uses a different test set")
 
-        targets = discounted_cost_to_go(costs, terminals, timeouts, gamma=checkpoint["gamma"])
-        metrics = evaluate_ranges(observations, actions, targets, ranges, model, args.taus)
+        targets = discounted_cost_to_go(
+            costs, terminals, timeouts, gamma=checkpoint["gamma"]
+        )
+        metrics = evaluate_ranges(
+            observations, actions, targets, ranges, model, args.taus
+        )
         results.append(metrics)
-        print_metrics(f"Seed {seed} | {args.split} set", metrics)
+
+        title = (
+            f"{args.split.capitalize()} set"
+            if single_seed
+            else f"Seed {seed} | {args.split} set"
+        )
+        print_metrics(title, metrics)
         print()
 
-    print_summary(f"Mean ± std over {len(results)} seeds | {args.split} set", results)
+    summary_title = (
+        f"{args.split.capitalize()} set"
+        if single_seed
+        else f"Mean ± std over {len(results)} seeds | {args.split} set"
+    )
+
+    if single_seed:
+        print_metrics(summary_title, results[0])
+    else:
+        print_summary(summary_title, results)
+
 
     # ---- Disabled: chronological stress holdout -------------------------------
     # With a random training split, the last 20% of episodes were mostly in the
