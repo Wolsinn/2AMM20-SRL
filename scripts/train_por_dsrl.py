@@ -107,8 +107,8 @@ def prepare_dataset(dataset):
     dataset["next_observations"] /= std
 
     for key, value in dataset.items():
-        if key == "costs":
-            continue
+        #if key == "costs":
+        #    continue
 
         dataset[key] = torchify(value)
 
