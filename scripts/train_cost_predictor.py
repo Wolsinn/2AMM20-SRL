@@ -36,7 +36,7 @@ TEST_SPLIT_SEED = 42        # fixed: the test episodes are identical for every s
 # TRAIN_FRACTION = 0.8      # replaced by the three-way split
 # SPLIT_SEED = 42           # replaced by TEST_SPLIT_SEED and the per-run seed
 BATCH_SIZE = 1024
-EPOCHS = 5
+EPOCHS = 10 
 LEARNING_RATE = 1e-3
 GAMMA = 0.9
 
@@ -52,7 +52,7 @@ def load_data():
     return observations, actions, costs, terminals, timeouts
 
 
-def train_one_seed(seed, observations, actions, targets, costs, terminals, timeouts, args_num_seeds):
+def train_one_seed(seed, observations, actions, targets, costs, terminals, timeouts, args_num_seeds, gamma=GAMMA, model_path=None, epochs=EPOCHS):
     torch.manual_seed(seed)
     np.random.seed(seed)
 
@@ -116,7 +116,7 @@ def train_one_seed(seed, observations, actions, targets, costs, terminals, timeo
     best_epoch = None
     best_state = None
 
-    for epoch in range(EPOCHS):
+    for epoch in range(epochs):
         model.train()
         total_loss = 0.0
         count = 0
@@ -170,8 +170,12 @@ def train_one_seed(seed, observations, actions, targets, costs, terminals, timeo
 
     model.load_state_dict(best_state)
 
-    model_filename = "cost_predictor.pt" if args_num_seeds == 1 else f"cost_predictor_seed{seed}.pt"
-    model_path = MODEL_DIR / model_filename
+    if model_path is None:
+        model_filename = "cost_predictor.pt" if args_num_seeds == 1 else f"cost_predictor_seed{seed}.pt"
+        model_path = MODEL_DIR / model_filename
+    else:
+        model_path = Path(model_path)
+        model_path.parent.mkdir(parents=True, exist_ok=True)
 
     torch.save(
         {
@@ -188,7 +192,7 @@ def train_one_seed(seed, observations, actions, targets, costs, terminals, timeo
             "test_episode_ranges": test_ranges,
             "best_epoch": best_epoch,
             "best_validation_mse": best_validation_loss,
-            "gamma": GAMMA,
+            "gamma": gamma
         },
         model_path,
     )

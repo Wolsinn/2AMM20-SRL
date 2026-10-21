@@ -24,7 +24,7 @@ from safety.safe_action import SafeActionCorrector
 # RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
 RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
 
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 # ENV_NAME = "SafetyPointGoal1-v0"
 ENV_NAME = "SafetyCarButton1-v0"
@@ -32,23 +32,29 @@ ENV_NAME = "SafetyCarButton1-v0"
 SCORE_ENV_NAME = "OfflineCarButton1Gymnasium-v0"
 
 
-def load_cost_model():
-    checkpoint = torch.load(
-        RUN_DIR / "cost_predictor.pt",
-        map_location="cpu",
-    )
+# def load_cost_model():
+#     checkpoint = torch.load(
+#         RUN_DIR / "cost_predictor.pt",
+#         map_location=DEVICE,
+#     )
 
-    model = CostPredictor(
-        checkpoint["state_dim"],
-        checkpoint["action_dim"],
-    )
+#     model = CostPredictor(
+#         checkpoint["state_dim"],
+#         checkpoint["action_dim"],
+#     )
 
+#     model.load_state_dict(checkpoint["model"])
+
+#     model.eval()
+
+#     return model
+
+def load_cost_model(path=None):
+    checkpoint = torch.load(path or RUN_DIR / "cost_predictor.pt", map_location=DEVICE)
+    model = CostPredictor(checkpoint["state_dim"], checkpoint["action_dim"]).to(DEVICE)
     model.load_state_dict(checkpoint["model"])
-
     model.eval()
-
     return model
-
 
 def build_policies(obs_dim, act_dim):
     policy = GaussianPolicy(
@@ -141,7 +147,7 @@ def select_action(policy, goal_policy, observation, mean, std, corrector=None, s
     return result["action"], result
 
 
-def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, candidate_std=0.10, seed=0, target_cost=10):
+def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, candidate_std=0.10, seed=0, target_cost=10, cost_model_path=None, write_csv=True):
     env = safety_gymnasium.make(ENV_NAME)
     score_env = gymnasium.make(SCORE_ENV_NAME)
     score_env.set_target_cost(target_cost)
@@ -164,7 +170,7 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
     corrector = None
 
     if mode == "safe":
-        cost_model = load_cost_model()
+        cost_model = load_cost_model(cost_model_path)
 
         corrector = SafeActionCorrector(
             cost_model=cost_model,
@@ -291,14 +297,15 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
     env.close()
     score_env.close()
 
-    csv_path = RESULTS_DIR / f"por_dsrl_{mode}_seed{seed}_{evaluation_id}.csv"
+    if write_csv:
+        csv_path = RESULTS_DIR / f"por_dsrl_{mode}_seed{seed}_{evaluation_id}.csv"
+        with csv_path.open("x", newline="") as output_file:
+            writer = csv.DictWriter(output_file, fieldnames=list(episode_rows[0]))
+            writer.writeheader()
+            writer.writerows(episode_rows)
+        print(f"CSV_OUTPUT={csv_path}")
 
-    with csv_path.open("x", newline="") as output_file:
-        writer = csv.DictWriter(output_file, fieldnames=list(episode_rows[0]))
-        writer.writeheader()
-        writer.writerows(episode_rows)
 
-    print(f"CSV_OUTPUT={csv_path}")
 
     timestep_violation_rate = (
         total_unsafe_steps / total_steps
@@ -337,6 +344,28 @@ def evaluate(num_episodes=5, mode="por", risk_threshold=5.0, num_candidates=50, 
         print(f"Median correction distance: {np.median(correction_distances):.6f}")
         print(f"Mean proposed risk: {np.mean(proposed_risks):.6f}")
         print(f"Mean selected risk: {np.mean(selected_risks):.6f}")
+
+    def _std(x):
+        return float(np.std(x, ddof=1)) if len(x) > 1 else 0.0
+
+    summary = {
+        "mean_reward": float(np.mean(episode_rewards)),
+        "mean_cost": float(np.mean(episode_costs)),
+        "norm_reward_mean": float(np.mean(episode_norm_rewards)),
+        "norm_reward_std": _std(episode_norm_rewards),
+        "norm_cost_mean": float(np.mean(episode_norm_costs)),
+        "norm_cost_std": _std(episode_norm_costs),
+        "frac_within_target": float(np.mean(np.array(episode_norm_costs) <= 1.0)),
+        "episode_violation_rate": float(episode_violation_rate),
+        "timestep_violation_rate": float(timestep_violation_rate),
+        "mean_length": float(np.mean(episode_lengths)),
+        "trigger_rate": total_corrected / total_steps if corrector is not None else float("nan"),
+        "safe_candidate_success": (total_safe_candidate_found / total_corrected) if total_corrected else float("nan"),
+        "mean_correction_distance": float(np.mean(correction_distances)) if correction_distances else float("nan"),
+        "mean_proposed_risk": float(np.mean(proposed_risks)) if proposed_risks else float("nan"),
+        "mean_selected_risk": float(np.mean(selected_risks)) if selected_risks else float("nan"),
+    }
+    return summary, episode_rows
 
 
 if __name__ == "__main__":
