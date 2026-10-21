@@ -22,7 +22,8 @@ from safety.cost_targets import concatenate_episode_ranges, discounted_cost_to_g
 # from safety.cost_targets import episode_ranges, stratified_episode_split   # old split, unused
 
 
-DEVICE = torch.device("cpu")
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 BATCH_SIZE = 4096
 
 
