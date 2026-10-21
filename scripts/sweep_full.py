@@ -24,14 +24,15 @@ from safety.cost_targets import concatenate_episode_ranges, discounted_cost_to_g
 GAMMAS = [0.3, 0.5, 0.75, 0.9, 0.99]
 QUANTILES = [0.50, 0.70, 0.80, 0.90, 0.95]
 NUM_CANDIDATES = 100
-CANDIDATE_STD = 1
+# CANDIDATE_STD = 1
+CANDIDATE_STDS = [0.3, 0.5, 0.75, 1.0]    
 NUM_EPISODES = 30
 TARGET_COST = 10.0
 COST_MODEL_SEED = 0          # train/val split seed of the cost model (test split is fixed at 42)
 BATCH = 4096
 
 TABLE_COLS = [
-    "gamma", "quantile", "risk_threshold", "norm_reward_mean", "norm_cost_mean",
+    "gamma", "quantile", "candidate_std", "risk_threshold", "norm_reward_mean", "norm_cost_mean",
     "frac_within_target", "episode_violation_rate", "trigger_rate", "safe_candidate_success",
 ]
 
@@ -83,7 +84,8 @@ def main():
 
     def record(config, summary, rows):
         summary_rows.append({**config, **summary})
-        episode_rows.extend({"gamma": config["gamma"], "quantile": config["quantile"], **r} for r in rows)
+        episode_rows.extend({"gamma": config["gamma"], "quantile": config["quantile"],
+                        "candidate_std": config["candidate_std"], **r} for r in rows)
         write_csv(out_dir / "summary.csv", summary_rows)       # rewritten after every config
         write_csv(out_dir / "episodes.csv", episode_rows)
 
@@ -95,7 +97,7 @@ def main():
         num_episodes=NUM_EPISODES, mode="por", seed=args.seed,
         target_cost=TARGET_COST, write_csv=False,
     )
-    record({"gamma": "", "quantile": "", "risk_threshold": "", **empty_cost}, summary, rows)
+    record({"gamma": "", "quantile": "", "candidate_std": "", "risk_threshold": "", **empty_cost}, summary, rows)
 
     # ---- sweep ----
     for gamma in GAMMAS:
@@ -125,15 +127,26 @@ def main():
         thresholds = np.quantile(risks, QUANTILES)
         print(f"gamma={gamma:g} thresholds: " + ", ".join(f"q{q:g}={t:.4f}" for q, t in zip(QUANTILES, thresholds)))
 
-        for q, thr in zip(QUANTILES, thresholds):
-            print(f"\n--- gamma={gamma:g} quantile={q:g} threshold={thr:.4f} ---")
-            summary, rows = ev.evaluate(
-                num_episodes=NUM_EPISODES, mode="safe", risk_threshold=float(thr),
-                num_candidates=NUM_CANDIDATES, candidate_std=CANDIDATE_STD,
-                seed=args.seed, target_cost=TARGET_COST, cost_model_path=ckpt_path, write_csv=False,
-            )
-            record({"gamma": gamma, "quantile": q, "risk_threshold": float(thr), **cost_metrics}, summary, rows)
+        # for q, thr in zip(QUANTILES, thresholds):
+        #     print(f"\n--- gamma={gamma:g} quantile={q:g} threshold={thr:.4f} ---")
+        #     summary, rows = ev.evaluate(
+        #         num_episodes=NUM_EPISODES, mode="safe", risk_threshold=float(thr),
+        #         num_candidates=NUM_CANDIDATES, candidate_std=CANDIDATE_STD,
+        #         seed=args.seed, target_cost=TARGET_COST, cost_model_path=ckpt_path, write_csv=False,
+        #     )
+        #     record({"gamma": gamma, "quantile": q, "risk_threshold": float(thr), **cost_metrics}, summary, rows)
 
+        for q, thr in zip(QUANTILES, thresholds):
+            for std in CANDIDATE_STDS:
+                print(f"\n--- gamma={gamma:g} quantile={q:g} threshold={thr:.4f} std={std:g} ---")
+                summary, rows = ev.evaluate(
+                    num_episodes=NUM_EPISODES, mode="safe", risk_threshold=float(thr),
+                    num_candidates=NUM_CANDIDATES, candidate_std=std,
+                    seed=args.seed, target_cost=TARGET_COST, cost_model_path=ckpt_path, write_csv=False,
+                )
+                record({"gamma": gamma, "quantile": q, "candidate_std": std,
+                        "risk_threshold": float(thr), **cost_metrics}, summary, rows)
+                
     # ---- console table ----
     print("\n\nSWEEP SUMMARY (baseline first)")
     print(" ".join(f"{c[:14]:>14}" for c in TABLE_COLS))
