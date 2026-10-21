@@ -5,12 +5,9 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-# DATASET_PATH = Path(
-#     PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
-# )
-DATASET_PATH = Path(
-    PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
-)
+# DATASET_PATH = Path(PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5")
+# DATASET_PATH = Path(PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5")
+DATASET_PATH = Path(PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton2Gymnasium-v0-300-3755.hdf5")
 
 
 def load_dsrl_dataset(dataset_path=DATASET_PATH):
