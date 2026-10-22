@@ -21,11 +21,11 @@ import evaluate_cost_predictor as ecp
 import evaluate_por_dsrl as ev            # <- RENAME to the file that contains evaluate()
 from safety.cost_targets import concatenate_episode_ranges, discounted_cost_to_go
 
-GAMMAS = [0.3, 0.5, 0.75, 0.9, 0.99]
-QUANTILES = [0.50, 0.70, 0.80, 0.90, 0.95]
+GAMMAS = [0.3]
+QUANTILES = [0.70]
 NUM_CANDIDATES = 100
 # CANDIDATE_STD = 1
-CANDIDATE_STDS = [0.3, 0.5, 0.75, 1.0]    
+CANDIDATE_STDS = [0.3]    
 NUM_EPISODES = 30
 TARGET_COST = 10.0
 COST_MODEL_SEED = 0          # train/val split seed of the cost model (test split is fixed at 42)

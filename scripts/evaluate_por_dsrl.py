@@ -375,7 +375,7 @@ if __name__ == "__main__":
     parser.add_argument("--episodes", type=int, default=30)
     parser.add_argument("--risk-threshold", type=float, default=5.0)
     parser.add_argument("--num-candidates", type=int, default=50)
-    parser.add_argument("--candidate-std", type=float, default=0.10)
+    parser.add_argument("--candidate-std", type=float, default=0.30)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--target-cost", type=float, default=10.0)
 

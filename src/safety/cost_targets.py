@@ -76,7 +76,7 @@ def concatenate_episode_ranges(values, ranges):
     return np.concatenate([np.asarray(values[start:end]) for start, end in ranges], axis=0)
 
 
-def discounted_cost_to_go(costs, terminals, timeouts, gamma=0.99):
+def discounted_cost_to_go(costs, terminals, timeouts, gamma=0.3):
     """
     Calculate discounted cost-to-go separately for every episode.
 

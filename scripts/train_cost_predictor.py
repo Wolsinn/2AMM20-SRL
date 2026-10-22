@@ -38,7 +38,7 @@ TEST_SPLIT_SEED = 42        # fixed: the test episodes are identical for every s
 BATCH_SIZE = 1024
 EPOCHS = 10 
 LEARNING_RATE = 1e-3
-GAMMA = 0.9
+GAMMA = 0.3
 
 
 def load_data():
