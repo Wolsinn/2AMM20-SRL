@@ -19,9 +19,11 @@ from util import sample_batch, torchify
 
 
 # DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
-DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
+# DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton2Gymnasium-v0-300-3755.hdf5"
 # RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
-RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
+# RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
+RUN_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton2"
 
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 

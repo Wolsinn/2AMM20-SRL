@@ -11,9 +11,11 @@ from sklearn.metrics import average_precision_score, roc_auc_score
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 # DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyPointGoal1Gymnasium-v0-100-2022.hdf5"
-DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
+# DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
+DATASET_PATH = PROJECT_ROOT / "data" / "raw" / "dsrl" / "SafetyCarButton2Gymnasium-v0-300-3755.hdf5"
 # MODEL_DIR    = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_pointgoal"
-MODEL_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
+# MODEL_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton1"
+MODEL_DIR = PROJECT_ROOT / "experiments" / "runs" / "por_dsrl_carbutton2"
 
 sys.path.insert(0, str(PROJECT_ROOT / "src"))
 

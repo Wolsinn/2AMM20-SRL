@@ -7,8 +7,10 @@ import dsrl
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 DATASET_DIR = PROJECT_ROOT / "data" / "raw" / "dsrl"
-DATASET_FILENAME = "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
-
+# DATASET_FILENAME = "SafetyCarButton1Gymnasium-v0-250-2656.hdf5"
+DATASET_FILENAME = "SafetyCarButton2Gymnasium-v0-300-3755.hdf5"
+# ENV_NAME = "OfflineCarButton1-v0"
+ENV_NAME = "OfflineCarButton2-v0"
 
 def main():
     DATASET_DIR.mkdir(parents=True, exist_ok=True)
@@ -16,12 +18,11 @@ def main():
     # Tell DSRL where to store datasets, if supported by this installation.
     os.environ["DSRL_DATASET_DIR"] = str(DATASET_DIR)
 
-    env_name = "OfflineCarButton1-v0"
 
     print(f"Dataset directory: {DATASET_DIR}")
-    print(f"Environment: {env_name}")
+    print(f"Environment: {ENV_NAME}")
 
-    env = gym.make(env_name)
+    env = gym.make(ENV_NAME)
 
     try:
         dataset = env.get_dataset()
